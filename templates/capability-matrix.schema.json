@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ResidueGuard capability evidence matrix",
+  "description": "Project-owned schema. Empty verifiedProfiles does not establish support.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "documentStatus",
+    "environment",
+    "defaultMutationEnabled",
+    "knownConstraints",
+    "verifiedProfiles"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "documentStatus": {
+      "enum": [
+        "template-not-validated",
+        "in-progress",
+        "validated"
+      ]
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "osVersion",
+        "osBuild",
+        "architecture",
+        "xcodeVersion",
+        "swiftCompiler",
+        "sdkVersion"
+      ],
+      "properties": {
+        "osVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "osBuild": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "architecture": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "xcodeVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "swiftCompiler": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sdkVersion": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "defaultMutationEnabled": {
+      "const": false
+    },
+    "knownConstraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "description",
+          "sourceID"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "sourceID": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "verifiedProfiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "providerID",
+          "providerVersion",
+          "osBuild",
+          "sourceType",
+          "enumeration",
+          "mutation",
+          "verification",
+          "scope",
+          "evidencePaths"
+        ],
+        "properties": {
+          "providerID": {
+            "type": "string",
+            "minLength": 1
+          },
+          "providerVersion": {
+            "type": "string",
+            "minLength": 1
+          },
+          "osBuild": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceType": {
+            "type": "string",
+            "minLength": 1
+          },
+          "enumeration": {
+            "enum": [
+              "completeWithinDeclaredScope",
+              "partial",
+              "unsupported",
+              "unverified"
+            ]
+          },
+          "mutation": {
+            "enum": [
+              "supportedVerified",
+              "readOnly",
+              "guidedOnly",
+              "unsupported",
+              "unverified",
+              "blockedByPolicy"
+            ]
+          },
+          "verification": {
+            "enum": [
+              "verifiedPostcondition",
+              "partial",
+              "unavailable",
+              "unverified"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidencePaths": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "limitations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "testDate": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    }
+  }
+}

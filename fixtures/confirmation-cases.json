@@ -1,0 +1,348 @@
+{
+  "schemaVersion": 1,
+  "fixtureType": "synthetic-not-user-data",
+  "purpose": "ConfirmationPolicy pure-function test inputs; UI and platform tests still required.",
+  "cases": [
+    {
+      "id": "F01",
+      "description": "未选择任何行",
+      "selectedRecordCount": 0,
+      "affectedPresence": [],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "noAction"
+    },
+    {
+      "id": "F02",
+      "description": "单项可操作高可信残留",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "highConfidenceOrphan"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "one"
+    },
+    {
+      "id": "F03",
+      "description": "多项可操作高可信残留",
+      "selectedRecordCount": 3,
+      "affectedPresence": [
+        "highConfidenceOrphan",
+        "highConfidenceOrphan",
+        "highConfidenceOrphan"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "one"
+    },
+    {
+      "id": "F04",
+      "description": "单项已安装软件",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "present"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "two"
+    },
+    {
+      "id": "F05",
+      "description": "多项已安装软件",
+      "selectedRecordCount": 3,
+      "affectedPresence": [
+        "present",
+        "present",
+        "present"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "two"
+    },
+    {
+      "id": "F06",
+      "description": "残留与已安装软件混选",
+      "selectedRecordCount": 2,
+      "affectedPresence": [
+        "highConfidenceOrphan",
+        "present"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "two"
+    },
+    {
+      "id": "F07",
+      "description": "未知身份",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "unknown"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "blocked"
+    },
+    {
+      "id": "F08",
+      "description": "外部卷未连接",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "volumeUnavailable"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "blocked"
+    },
+    {
+      "id": "F09",
+      "description": "应用仍在废纸篓",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "inTrash"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "blocked"
+    },
+    {
+      "id": "F10",
+      "description": "受保护目标",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "highConfidenceOrphan"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": true,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "blocked"
+    },
+    {
+      "id": "F11",
+      "description": "残留但操作只支持手动引导",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "highConfidenceOrphan"
+      ],
+      "allOperationsSupported": false,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "blocked"
+    },
+    {
+      "id": "F12",
+      "description": "影响范围不可界定",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "highConfidenceOrphan"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": false,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "blocked"
+    },
+    {
+      "id": "F13",
+      "description": "已扩大实际影响但未重新得到用户同意",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "highConfidenceOrphan",
+        "present"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": false,
+      "planFresh": true,
+      "expected": "blocked"
+    },
+    {
+      "id": "F14",
+      "description": "用户明确批准扩大后的计划涉及已安装应用",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "highConfidenceOrphan",
+        "present"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "two"
+    },
+    {
+      "id": "F15",
+      "description": "计划过期",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "highConfidenceOrphan"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": false,
+      "expected": "blocked"
+    },
+    {
+      "id": "F16",
+      "description": "有效独立 CLI 也是仍安装软件",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "present"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "two"
+    },
+    {
+      "id": "F17",
+      "description": "仍被其他软件使用的共享组件",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "sharedComponentActive"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "blocked"
+    },
+    {
+      "id": "F18",
+      "description": "疑似而非高可信残留",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "suspectedOrphan"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "blocked"
+    },
+    {
+      "id": "F19",
+      "description": "扫描无访问权限",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "permissionDenied"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "blocked"
+    },
+    {
+      "id": "F20",
+      "description": "没有可确认的实际影响对象",
+      "selectedRecordCount": 1,
+      "affectedPresence": [],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "blocked"
+    },
+    {
+      "id": "F21",
+      "description": "残留加未知不走一次确认",
+      "selectedRecordCount": 2,
+      "affectedPresence": [
+        "highConfidenceOrphan",
+        "unknown"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "blocked"
+    },
+    {
+      "id": "F22",
+      "description": "已安装加未知也不靠双确认绕过",
+      "selectedRecordCount": 2,
+      "affectedPresence": [
+        "present",
+        "unknown"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "blocked"
+    },
+    {
+      "id": "F23",
+      "description": "受管理且软件仍安装",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "present"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": true,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "blocked"
+    },
+    {
+      "id": "F24",
+      "description": "状态名称未识别",
+      "selectedRecordCount": 1,
+      "affectedPresence": [
+        "futureState"
+      ],
+      "allOperationsSupported": true,
+      "hasProtectedOrManagedTarget": false,
+      "scopeBounded": true,
+      "expandedImpactExplicitlyApproved": true,
+      "planFresh": true,
+      "expected": "blocked"
+    }
+  ]
+}
