@@ -15,14 +15,7 @@ struct DemoRecord: Codable, Identifiable, Sendable {
     let protected: Bool
     let preciseOperation: Bool
     let affectedIDs: [String]
-    var canSelect: Bool {
-        !protected && preciseOperation && (presence == .present || presence == .highConfidenceOrphan)
-    }
-    var actionLabel: String {
-        if protected { return "受保护，禁止操作" }
-        if !preciseOperation { return "需系统设置处理" }
-        return canSelect ? "仅可预演" : "证据不足，禁止操作"
-    }
+
 }
 
 extension PresenceState {

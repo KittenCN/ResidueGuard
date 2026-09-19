@@ -5,11 +5,11 @@ struct RecordsView: View {
     @Bindable var store: WorkspaceStore
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if !store.isDemo {
+            if !store.hasSnapshot {
                 ContentUnavailableView("尚未采集此来源", systemImage: "doc.text.magnifyingglass", description: Text("当前没有真实扫描结果。可主动载入合成演示以验证界面与策略。"))
             } else {
                 filters
-                Text("来源：合成夹具；范围：演示用户 / 演示系统；真实来源未运行。登记与运行状态未知，不表示未运行。")
+                Text(store.isDemo ? "来源：合成夹具；范围：演示用户 / 演示系统；真实来源未运行。登记与运行状态未知，不表示未运行。" : "仅展示本次已读取的来源记录。运行状态未验证不等于未运行；所有真实记录只读。")
                     .font(.caption).foregroundStyle(.secondary)
                 Table(store.visibleRecords, selection: $store.inspectedID) {
                     TableColumn("预演选择") { record in
@@ -23,7 +23,7 @@ struct RecordsView: View {
                             .accessibilityIdentifier("record.\(record.id)")
                     }.width(min: 160, ideal: 210)
                     TableColumn("存在状态") { record in Text(record.presence.title) }.width(min: 100, ideal: 130)
-                    TableColumn("登记 / 运行") { _ in Text("合成登记 / 未知").foregroundStyle(.secondary) }.width(115)
+                    TableColumn("登记 / 运行") { record in Text(record.isSynthetic ? "合成登记 / 未知" : "来源配置 / 未验证").foregroundStyle(.secondary) }.width(115)
                     TableColumn("来源 / 范围") { record in VStack(alignment: .leading) { Text(record.source); Text(record.scope).font(.caption).foregroundStyle(.secondary) } }.width(min: 100, ideal: 150)
                     TableColumn("可用操作") { record in Text(record.actionLabel) }.width(min: 110, ideal: 140)
                 }

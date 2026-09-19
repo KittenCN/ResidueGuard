@@ -1,27 +1,32 @@
 import SwiftUI
 
 struct RecordInspector: View {
-    let record: DemoRecord?
+    let record: WorkspaceRecord?
     let loadedAt: Date?
     var body: some View {
         ScrollView {
             if let record {
                 VStack(alignment: .leading, spacing: 15) {
-                    Label("合成记录详情", systemImage: "testtube.2").font(.headline)
+                    Label(record.isSynthetic ? "合成记录详情" : "只读来源记录详情", systemImage: record.isSynthetic ? "testtube.2" : "doc.text").font(.headline)
                     Text(record.name).font(.title2)
                     field("存在状态", record.presence.title)
                     field("可用操作", record.actionLabel)
                     field("记录身份", record.id)
                     field("Bundle ID", record.bundleID)
-                    field("Team ID / 签名", "未知 / 未验证（合成数据）")
-                    field("路径（非真实文件）", record.path)
-                    field("服务 Label", "synthetic.\(record.id)")
+                    field("Team ID / 签名", "未知 / 未验证")
+                    field(record.isSynthetic ? "路径（非真实文件）" : "目标路径", record.path)
+                    field("来源原生身份", record.provenance?.id.nativeIdentity ?? "synthetic.\(record.id)")
                     field("来源 / 用户范围", "\(record.source) / \(record.scope)")
-                    field("来源文件", "Resources/demo-records.json")
+                    field("来源文件", record.provenance?.sourceArtifact ?? "Resources/demo-records.json")
                     field("归属证据与判定理由", record.reason)
-                    field("实际影响身份", record.affectedIDs.joined(separator: "\n"))
-                    field("登记 / 运行状态", "合成登记 / 未观测")
-                    field("覆盖缺口", "真实提供器未运行；无任何本机存在性或操作能力证据。")
+                    field("实际影响身份", record.isSynthetic ? record.affectedIDs.joined(separator: "\n") : "尚未展开；真实写能力禁用，不能作为清理范围")
+                    field("登记 / 运行状态", record.isSynthetic ? "合成登记 / 未观测" : "已读取来源配置 / 未验证")
+                    field("能力限制", record.capabilityReason)
+                    if let provenance = record.provenance {
+                        field("扫描代次", provenance.generation)
+                        field("解析警告", provenance.parseWarnings.isEmpty ? "无解析警告；不代表全系统覆盖完整" : provenance.parseWarnings.joined(separator: "\n"))
+                        field("来源元数据（不执行内容）", provenance.rawMetadata.sorted { $0.key < $1.key }.map { "\($0.key): \($0.value)" }.joined(separator: "\n"))
+                    }
                     field("加载时间", loadedAt?.formatted() ?? "未知")
                 }.padding().textSelection(.enabled)
             } else {

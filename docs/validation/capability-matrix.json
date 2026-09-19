@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "documentStatus": "p0-documentary-review-p1-dry-run-only",
+  "documentStatus": "p2-limited-readonly-observed-mutations-disabled",
   "environment": {
     "osVersion": "27.0",
     "osBuild": "26A428",
@@ -34,26 +34,29 @@
   "reviewedAt": "2026-09-20",
   "evidenceFiles": [
     "environment.md",
-    "provider-dossier.md"
+    "provider-dossier.md",
+    "p2-results-2026-09-20.md"
   ],
   "providers": [
     {
       "providerID": "launchd-configuration",
       "osBuild": "26A428",
-      "providerVersion": null,
-      "parserVersion": null,
-      "evidenceLevel": "documentaryOnly",
-      "evidenceReference": "provider-dossier.md",
-      "enumerate": "unverified",
+      "providerVersion": "launch-plist-readonly-v1",
+      "parserVersion": "1",
+      "evidenceLevel": "limitedReadOnlyHostObservation",
+      "evidenceReference": "p2-results-2026-09-20.md",
+      "enumerate": "readOnly",
       "readStatus": "unverified",
       "removeRegistration": "unverified",
       "resetPermission": "unverified",
       "verifyOutcome": "unverified",
       "restoreConfiguration": "unverified",
       "mutationEnabled": false,
-      "osIntegrationResult": "notRun",
-      "testedOSBuilds": [],
-      "reason": "Local launchd.plist manual reviewed; no real source enumeration performed.",
+      "osIntegrationResult": "passed",
+      "testedOSBuilds": [
+        "26A428"
+      ],
+      "reason": "Bounded immediate plist enumeration observed; malformed rows retained. No runtime, ownership-complete or mutation validation.",
       "scopeConstraints": [
         "P1 synthetic demonstration only",
         "No production-host mutation",

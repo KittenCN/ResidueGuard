@@ -75,4 +75,41 @@ final class ResidueGuardUITests: XCTestCase {
         app.buttons["review.cancel"].click()
         XCTAssertTrue(app.buttons["review.open"].exists)
     }
+
+    private func relaunchSyntheticScan(slow: Bool = false) {
+        app.terminate()
+        app.launchArguments = ["--ui-synthetic-scan"] + (slow ? ["--ui-slow-scan"] : [])
+        app.launch()
+    }
+    func testSyntheticScanCoverageAndReadOnlyRows() {
+        relaunchSyntheticScan()
+        app.buttons["scan.start"].click()
+        XCTAssertTrue(app.otherElements["coverage.synthetic.scan"].waitForExistence(timeout: 5) || app.staticTexts["synthetic.scan · 部分"].exists)
+        XCTAssertTrue(app.staticTexts["测试注入 · 合成扫描结果，非本机数据"].exists)
+        app.staticTexts["用户启动代理"].firstMatch.click()
+        let checkbox = app.checkBoxes.matching(NSPredicate(format: "identifier BEGINSWITH %@", "select.")).firstMatch
+        XCTAssertTrue(checkbox.waitForExistence(timeout: 3))
+        XCTAssertFalse(checkbox.isEnabled)
+        XCTAssertFalse(app.buttons["review.open"].isEnabled)
+    }
+    func testScanModeInvalidatesDemoSelection() {
+        relaunchSyntheticScan()
+        openDemoAgents()
+        app.checkBoxes["select.demo.orphan"].click()
+        XCTAssertTrue(app.buttons["review.open"].isEnabled)
+        app.buttons["scan.start"].click()
+        XCTAssertTrue(app.staticTexts["已选 0 项，其中 0 项当前隐藏"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["review.open"].isEnabled)
+        XCTAssertFalse(app.checkBoxes["select.demo.orphan"].exists)
+    }
+    func testCancelInjectedScanNeverRunsHostProvider() {
+        relaunchSyntheticScan(slow: true)
+        app.buttons["scan.start"].click()
+        XCTAssertTrue(app.buttons["scan.cancel"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["demo.load"].isEnabled)
+        XCTAssertFalse(app.buttons["scan.start"].isEnabled)
+        app.buttons["scan.cancel"].click()
+        XCTAssertTrue(app.staticTexts["synthetic.scan · 取消"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["scan.start"].isEnabled)
+    }
 }

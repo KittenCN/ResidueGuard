@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import ResidueCore
+import ResiduePlatform
 
 @MainActor @Observable
 final class WorkspaceStore {
@@ -12,8 +13,26 @@ final class WorkspaceStore {
             review = nil
         }
     }
-    private(set) var records: [DemoRecord] = []
+    private(set) var records: [WorkspaceRecord] = []
     private(set) var isDemo = false
+    private(set) var coverage: [ScanCoverage] = []
+    private(set) var isScanning = false
+    private(set) var cancellationRequested = false
+    private(set) var isSyntheticScan = false
+    private(set) var configuredLaunchRoots: [URL] = []
+    private(set) var configuredApplicationRoots: [URL] = []
+    private var scanTask: Task<Void, Never>?
+    private var previousSourceRecords: [SourceRecord]?
+    private let scanner: WorkspaceScanner
+    init(scanner: WorkspaceScanner = .live, syntheticScan: Bool = false) {
+        self.scanner = scanner; self.isSyntheticScan = syntheticScan
+    }
+    var hasSnapshot: Bool { loadedAt != nil }
+    var modeTitle: String {
+        if isDemo { return "演示模式 · 合成数据，非真实系统扫描" }
+        if isSyntheticScan { return "测试注入 · 合成扫描结果，非本机数据" }
+        return hasSnapshot ? "只读扫描结果 · 仅限声明范围" : "只读模式 · 尚未运行真实系统扫描"
+    }
     private(set) var isLoading = false
     private(set) var loadedAt: Date?
     var selectedIDs: Set<String> = [] { didSet { review = nil } }
@@ -27,10 +46,10 @@ final class WorkspaceStore {
     var review: DryRunPlan?
     var showsReview = false
     private(set) var generation = UUID().uuidString
-    var pageRecords: [DemoRecord] {
+    var pageRecords: [WorkspaceRecord] {
         records.filter { page == .applications || $0.page == page.rawValue }
     }
-    var visibleRecords: [DemoRecord] {
+    var visibleRecords: [WorkspaceRecord] {
         pageRecords.filter { record in
             (search.isEmpty || [record.name, record.bundleID, record.path].contains { $0.localizedCaseInsensitiveContains(search) }) &&
             (statusFilter == "全部" || record.presence.title == statusFilter) &&
@@ -40,12 +59,12 @@ final class WorkspaceStore {
         }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
     var hiddenSelectedCount: Int { selectedIDs.subtracting(visibleRecords.map(\.id)).count }
-    var inspected: DemoRecord? { records.first { $0.id == inspectedID } }
+    var inspected: WorkspaceRecord? { records.first { $0.id == inspectedID } }
     var sourceOptions: [String] { ["全部"] + Set(pageRecords.map(\.source)).sorted() }
     var scopeOptions: [String] { ["全部"] + Set(pageRecords.map(\.scope)).sorted() }
 
     func loadDemo() async {
-        guard !isLoading else { return }
+        guard !isLoading && !isScanning else { return }
         isLoading = true
         defer { isLoading = false }
         guard let url = Bundle.main.url(forResource: "demo-records", withExtension: "json") else {
@@ -54,21 +73,79 @@ final class WorkspaceStore {
         do {
             let result = try await DemoLoader.load(from: url)
             guard !Task.isCancelled else { notice = "演示加载已取消。"; return }
-            records = result; isDemo = true; loadedAt = Date(); generation = UUID().uuidString
+            previousSourceRecords = nil
+            records = result.map(WorkspaceRecord.init(demo:)); coverage = []; isDemo = true; loadedAt = Date(); generation = UUID().uuidString
             selectedIDs.removeAll(); inspectedID = nil
             notice = "已载入合成演示数据，不代表本机扫描结果。"
         } catch { notice = "演示加载失败：\(error.localizedDescription)" }
     }
     func unloadDemo() {
-        records = []; isDemo = false; loadedAt = nil; generation = UUID().uuidString
+        previousSourceRecords = nil
+        records = []; coverage = []; isDemo = false; loadedAt = nil; generation = UUID().uuidString
         selectedIDs.removeAll(); inspectedID = nil; notice = "已退出演示；尚未运行真实扫描。"
     }
-    func select(_ record: DemoRecord, value: Bool) {
+
+    func chooseRoots(applications: Bool) {
+        guard !isScanning, !isLoading else { return }
+        guard let urls = ScanAccess.chooseDirectories(applicationRoots: applications) else { return }
+        guard urls.allSatisfy({ ScanAccess.isAllowedDirectory($0, applicationRoots: applications) }) else {
+            notice = "所选目录不属于允许的只读范围。启动配置限本用户 LaunchAgents 或系统/共享标准目录；应用索引限本用户目录、/Applications 或 /System/Applications。"; return
+        }
+        if applications { configuredApplicationRoots = urls } else { configuredLaunchRoots = urls }
+        notice = "扫描目录已更新；点击只读扫描后才会读取。授权不持久化。"
+    }
+    func startScan() {
+        guard !isScanning, !isLoading else { return }
+        guard isSyntheticScan || !configuredLaunchRoots.isEmpty else {
+            notice = "请先选择启动配置目录，明确授权只读范围。"; return
+        }
+        records = []; coverage = []; isDemo = false; loadedAt = nil
+        selectedIDs.removeAll(); inspectedID = nil; review = nil; showsReview = false
+        generation = UUID().uuidString
+        let requestedGeneration = generation
+        isScanning = true; cancellationRequested = false
+        notice = "正在只读采集；旧结果已清除，未访问的目录不会计为空。"
+        let roots = configuredLaunchRoots
+        let apps = configuredApplicationRoots
+        let configuration = ScanConfiguration(launchRoots: roots.map {
+            ScanRoot(url: $0, scope: $0.lastPathComponent == "LaunchDaemons" ? "systemDaemons" : ($0.path.hasPrefix("/Library/") || $0.path.hasPrefix("/System/") ? "sharedAgents" : "currentUser"))
+        }, applicationRoots: apps)
+        let accessURLs = roots + apps
+        let granted = accessURLs.filter { $0.startAccessingSecurityScopedResource() }
+        scanTask = Task {
+            defer {
+                granted.forEach { $0.stopAccessingSecurityScopedResource() }
+                isScanning = false; scanTask = nil
+            }
+            let snapshot = await scanner.scan(configuration)
+            guard generation == requestedGeneration else { return }
+            records = snapshot.rows.map(WorkspaceRecord.init(scan:))
+            coverage = snapshot.coverage; loadedAt = snapshot.observedAt
+            generation = snapshot.generation
+            let currentSources = snapshot.rows.map(\.record)
+            let comparison = previousSourceRecords.map { SnapshotComparison.compare(previous: $0, current: currentSources) }
+            previousSourceRecords = currentSources
+            notice = cancellationRequested
+                ? "扫描已取消；显示已返回的部分结果。未访问范围不代表没有记录。"
+                : "已完成本次只读采集；请检查来源覆盖与未验证范围。所有系统修改仍禁用。"
+            if let comparison {
+                notice += " 本次新增观察 \(comparison.added.count)、变化 \(comparison.changed.count)、未再次观察到 \(comparison.notObserved.count)（不代表已删除）、身份冲突 \(comparison.ambiguous.count)。"
+            }
+        }
+    }
+    func cancelScan() {
+        guard isScanning else { return }
+        cancellationRequested = true
+        notice = "已请求取消；正在收拢部分结果。"
+        scanTask?.cancel()
+    }
+    func select(_ record: WorkspaceRecord, value: Bool) {
         guard record.canSelect else { return }
         if value { selectedIDs.insert(record.id) } else { selectedIDs.remove(record.id) }
     }
     func showSelected() { search = ""; statusFilter = "全部"; sourceFilter = "全部"; scopeFilter = "全部"; onlySelected = true }
     func makePlan(expandedImpactApproved: Bool = false) {
+        guard isDemo && !isScanning else { review = nil; showsReview = false; return }
         let snapshot = PlanSnapshot(generation: generation, osBuild: "synthetic", records: records.map {
             PlanningRecord(id: $0.id, operationKey: "synthetic.configuration.\($0.id)", affectedTargetIDs: $0.affectedIDs,
                 capability: CapabilityDescriptor(profileID: "synthetic-demo-only", state: $0.preciseOperation ? .supportedVerified : .guidedOnly,

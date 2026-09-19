@@ -7,7 +7,7 @@ struct OverviewView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 Text("先核实来源，再判断残留").font(.largeTitle.bold())
-                Text("本阶段所有按钮只生成 dry-run 计划。不会修改启动项、后台服务、权限或应用文件。")
+                Text("真实扫描只读；清理确认仅限合成 dry-run。不会修改启动项、后台服务、权限或应用文件。")
                 GroupBox("权限总表不可读取") {
                     Text("当前版本未接入真实权限提供器。macOS 27+ 不使用 TCC 数据库直读。权限页面提供手动核对路径，不把不可读取显示为 0 个应用。")
                         .frame(maxWidth: .infinity, alignment: .leading).padding(6)
@@ -21,7 +21,11 @@ struct OverviewView: View {
                     Text("演示加载时间：\(store.loadedAt?.formatted() ?? "未知")；范围：Resources/demo-records.json，非本机数据。")
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
-                    Text("扫描状态：未运行。记录数量未知。P2 真实只读采集尚未启用。")
+                    if store.hasSnapshot {
+                        Text("已读取 \(store.records.count) 条记录；真实可执行动作：0。")
+                        Text("扫描时间：\(store.loadedAt?.formatted() ?? "未知")")
+                            .font(.caption)
+                    } else { Text(store.isScanning ? "扫描进行中；数量尚未确定。" : "扫描状态：未运行。记录数量未知。请主动选择目录后扫描。") }
                 }
                 if store.isDemo {
                     Text("合成覆盖状态演示").font(.title2)
@@ -35,7 +39,20 @@ struct OverviewView: View {
                         }
                     }
                 }
-                Text("真实来源覆盖").font(.title2)
+                Text(store.isSyntheticScan && !store.isDemo ? "合成测试来源覆盖（未读取主机）" : "真实来源覆盖").font(.title2)
+                ForEach(Array(store.coverage.enumerated()), id: \.offset) { _, coverage in
+                    GroupBox {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("\(coverage.providerID) · \(coverage.state.demoTitle)").font(.headline)
+                            Text("声明范围：\(coverage.declaredRoots.joined(separator: "、"))")
+                            Text("已解析 \(coverage.parsedCount)；未解析 \(coverage.unparsedCount)")
+                            Text((coverage.diagnostics + coverage.errors + coverage.skippedAreas).joined(separator: "；"))
+                                .foregroundStyle(.secondary)
+                            Text("代次：\(coverage.generation)").foregroundStyle(.secondary)
+                        }.font(.caption).frame(maxWidth: .infinity, alignment: .leading).textSelection(.enabled)
+                    }.accessibilityIdentifier("coverage.\(coverage.providerID)")
+                }
+                if store.coverage.isEmpty {
                 ForEach(["用户启动配置", "共享启动配置", "登录项 / BTM 后台登记", "权限分类 / 独立权限机制"], id: \.self) { source in
                     GroupBox {
                         HStack(alignment: .top) {
@@ -47,7 +64,8 @@ struct OverviewView: View {
                             .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
-                Text("覆盖状态模型支持：声明范围内完成、部分、权限不足、不支持、失败、取消。上述来源当前均未运行，不计为通过。")
+                }
+                Text("覆盖状态模型支持：声明范围内完成、部分、权限不足、不支持、失败、取消。未运行项不计为通过，部分结果不等于完整清单。")
                     .font(.caption).foregroundStyle(.secondary)
             }.padding(24)
         }

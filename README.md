@@ -1,19 +1,20 @@
 # ResidueGuard｜macOS 残留管家
-## P0 / P1 只读原型 · 2026-09-20
+## 只读扫描与 dry-run 原型 · 2026-09-20
 
-本仓库包含研发规格、原生 SwiftUI macOS App 工程和独立 Swift 6 核心 Package。当前仅提供只读界面、明确标记的合成演示和 dry-run 计划；不包含真实系统扫描器或清理执行器，不申请隐私权限、不安装后台组件。实测与未验证项以 `docs/validation/` 为准。
+本仓库包含研发规格、原生 SwiftUI macOS App 工程和独立 Swift 6 核心 Package。当前提供用户明确授权目录内的真实只读启动配置扫描、明确标记的合成演示和 dry-run 计划；不包含可用的真实清理执行器，不申请隐私权限、不安装后台组件。实测与未验证项以 `docs/validation/` 为准。
 
 ### 开发入口
 
 - `bash script/preflight.sh`：只读环境预检。
 - `./script/test.sh core`：使用项目选定 Xcode 的 Swift 工具链测试独立核心，无系统副作用。
 - `./script/build_and_run.sh`：使用项目固定 Xcode 构建并以 `.app` 启动；`--build-only` 只构建，`--verify` 检查启动进程。
+- `./script/test.sh platform`：独立只读采集与进程边界测试。
 - `./script/test.sh ui`：Xcode UI 测试，只操作本应用的合成演示。
 - Codex Run 已连接到同一构建脚本，不修改全局 `xcode-select`。
 
 首次打开不会伪装成已扫描系统。主动载入演示后，复选框表示合成 dry-run 目标；预览/确认均不执行主机写操作。权限页面明确显示读取限制和系统设置文字路径。
 
-详见 [阶段状态](docs/validation/status.md)、[环境与工具链](docs/validation/environment.md)、[实际测试报告](docs/validation/test-results-2026-09-20.md)。本轮结束不自动推进 P2 或真实清理。
+详见 [阶段状态](docs/validation/status.md)、[环境与工具链](docs/validation/environment.md)、[实际测试报告](docs/validation/test-results-2026-09-20.md)。真实写入必须满足后续隔离验证门槛；当前写能力全部关闭。
 
 ### 产品目标
 在原生 macOS GUI 中，按登录项、后台项、启动服务和权限类别展示已知记录。通过多来源证据识别卸载残留；软件名前有清理复选框；高可信残留以红色和文字标识。实际影响对象全部是高可信残留时，应用内确认一次；只要实际影响到仍安装的软件，就必须确认两次。管理员认证不替代这两次产品确认。
@@ -52,3 +53,5 @@
 - 清理：移除明确选择的登记/配置，或重置明确支持的授权范围；不是删除用户文件或卸载整个应用。
 
 所有来源标号 `[Sxx]` 在 `docs/08-sources-and-decisions.md` 中解析。
+
+最新只读范围与限制见 [P2 验证记录](docs/validation/p2-results-2026-09-20.md)，整体剩余门槛见 [项目进度](docs/validation/project-progress.md)。

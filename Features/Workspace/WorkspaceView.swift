@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct WorkspaceView: View {
-    @State private var store = WorkspaceStore()
+    @State private var store = WorkspaceStore.production()
     @State private var showInspector = true
     var body: some View {
         NavigationSplitView {
@@ -20,16 +20,17 @@ struct WorkspaceView: View {
         } detail: {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Label(store.isDemo ? "演示模式 · 合成数据，非真实系统扫描" : "只读 P1 · 尚未运行真实系统扫描", systemImage: store.isDemo ? "testtube.2" : "lock.shield")
+                    Label(store.modeTitle, systemImage: store.isDemo ? "testtube.2" : "lock.shield")
                         .font(.headline).accessibilityIdentifier("mode.banner")
                     Spacer()
                     if store.isDemo {
                         Button("退出演示") { store.unloadDemo() }.accessibilityIdentifier("demo.exit")
                     } else {
                         Button("载入合成演示") { Task { await store.loadDemo() } }
-                            .disabled(store.isLoading).accessibilityIdentifier("demo.load")
+                            .disabled(store.isLoading || store.isScanning).accessibilityIdentifier("demo.load")
                     }
                 }.padding()
+                ScanControlsView(store: store)
                 Divider()
                 if store.page == .overview { OverviewView(store: store) }
                 else if store.page.isPermission { PermissionGuidanceView(page: store.page) }
