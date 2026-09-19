@@ -13,7 +13,7 @@
 | 默认 macOS SDK | 27.0 | CLT SDK，不等同 Xcode 构建已通过 |
 | 已安装 Xcode 候选 | `/Applications/Xcode.app`，27.0 / 27A266a | bundle 元数据；精确 build 的正式发布身份尚未独立核实 |
 | Xcode 许可/首次启动状态 | 初次被许可阻断；本轮复查已可用 | 后续指定 Xcode 的 preflight 成功，`xcodebuild -checkFirstLaunchStatus` exit 0；变化来源未知，代理没有接受协议 |
-| 签名/公证/helper 身份 | 未验证 | 不读取或导出证书、密钥；不安装 helper |
+| 签名/公证/helper 身份 | 普通 Debug ad-hoc 签名校验通过；发布/公证/helper 未验证 | 只检查本项目构建产物，不读取或导出证书、密钥；不安装 helper |
 | 最低部署版本 | 14.0（工程目标） | 不是已在 macOS 14 上测试的声明 |
 
 [Apple 官方兼容表](https://developer.apple.com/xcode/system-requirements) 本次在线读取列出非 beta 的 Xcode 27，要求 macOS 26.6 或更高，携带 SDK 27 / Swift 6.4。版本层面与宿主兼容；安装包精确 build、许可状态和实际构建通过仍是不同条件。当前固定已安装候选；许可/首次启动门槛复查已清除，但此事实本身不证明工程构建通过。无需升级 macOS 或安装工具。

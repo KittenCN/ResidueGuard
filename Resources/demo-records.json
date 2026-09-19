@@ -1,0 +1,13 @@
+{
+  "fixtureType": "synthetic-not-user-data",
+  "records": [
+    {"id":"demo.orphan","name":"演示·旧日笔记","page":"用户启动代理","presence":"highConfidenceOrphan","bundleID":"example.demo.oldnotes","path":"/Synthetic/Applications/OldNotes.app","source":"合成 LaunchAgent","scope":"演示用户","reason":"合成证据：原卷在线、载荷与应用缺失、授权范围覆盖完整、无活动副本或共享依赖。不是本机观察。","protected":false,"preciseOperation":true,"affectedIDs":["demo.orphan"]},
+    {"id":"demo.present","name":"演示·今日笔记","page":"用户启动代理","presence":"present","bundleID":"example.demo.notes","path":"/Synthetic/Applications/Notes.app","source":"合成 LaunchAgent","scope":"演示用户","reason":"合成证据：发现有效安装实例。预演移除启动配置会影响仍安装软件。","protected":false,"preciseOperation":true,"affectedIDs":["demo.present"]},
+    {"id":"demo.offline","name":"演示·外置磁盘工具","page":"用户启动代理","presence":"volumeUnavailable","bundleID":"example.demo.external","path":"/Synthetic/Volumes/Offline/Tool.app","source":"合成 LaunchAgent","scope":"演示用户","reason":"合成证据：原安装卷未连接，不能判定已卸载。","protected":false,"preciseOperation":true,"affectedIDs":["demo.offline"]},
+    {"id":"demo.unknown","name":"演示·未知归属","page":"用户启动代理","presence":"unknown","bundleID":"未知","path":"/Synthetic/Unknown/Program","source":"合成 LaunchAgent","scope":"演示用户","reason":"合成证据：归属不明确，操作阻断。","protected":false,"preciseOperation":true,"affectedIDs":["demo.unknown"]},
+    {"id":"demo.protected","name":"演示·受保护服务","page":"用户启动代理","presence":"present","bundleID":"example.demo.protected","path":"/Synthetic/Protected/Agent","source":"合成系统保护记录","scope":"演示系统范围","reason":"合成证据：受保护目标，不提供操作。","protected":true,"preciseOperation":true,"affectedIDs":["demo.protected"]},
+    {"id":"demo.expanded","name":"演示·关系残留（扩大影响）","page":"用户启动代理","presence":"highConfidenceOrphan","bundleID":"example.demo.relationship","path":"/Synthetic/Relations/OldTarget","source":"合成关系记录","scope":"演示用户","reason":"合成动作同时影响仍安装的今日笔记；必须先明确批准扩大后的预演范围，再走两次确认。","protected":false,"preciseOperation":true,"affectedIDs":["demo.expanded","demo.present"]},
+    {"id":"demo.guided","name":"演示·后台历史登记","page":"后台登记","presence":"highConfidenceOrphan","bundleID":"example.demo.oldbackground","path":"/Synthetic/Applications/OldBackground.app","source":"合成 BTM 记录","scope":"演示用户","reason":"合成残留，但无已验证的逐项管理机制。配置缺失不等于历史记录消失。","protected":false,"preciseOperation":false,"affectedIDs":["demo.guided"]},
+    {"id":"demo.login","name":"演示·登录项目","page":"登录项","presence":"present","bundleID":"example.demo.login","path":"/Synthetic/Applications/Login.app","source":"合成登录项","scope":"演示用户","reason":"合成记录；SMAppService 不用于管理第三方服务。","protected":false,"preciseOperation":false,"affectedIDs":["demo.login"]}
+  ]
+}
