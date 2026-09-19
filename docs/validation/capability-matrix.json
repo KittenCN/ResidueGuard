@@ -1,0 +1,355 @@
+{
+  "schemaVersion": 1,
+  "documentStatus": "p0-documentary-review-p1-dry-run-only",
+  "environment": {
+    "osVersion": "27.0",
+    "osBuild": "26A428",
+    "architecture": "arm64",
+    "xcodeVersion": "27.0",
+    "xcodeBuild": "27A266a",
+    "xcodePath": "/Applications/Xcode.app",
+    "xcodeReadiness": "initiallyLicenseBlocked-recheckPassed",
+    "swiftCompiler": "Apple Swift 6.4",
+    "sdkVersion": "27.0"
+  },
+  "defaultMutationEnabled": false,
+  "knownConstraints": [
+    {
+      "id": "MACOS27-TCC-READ",
+      "description": "macOS 27+ baseline does not use direct TCC database access. This constraint is documentary evidence, not a completed integration test.",
+      "sourceID": "S03"
+    },
+    {
+      "id": "OWN-SERVICES-ONLY",
+      "description": "SMAppService is not a universal manager of arbitrary third-party applications.",
+      "sourceID": "S02"
+    },
+    {
+      "id": "NO-SCOPE-ESCALATION",
+      "description": "No global reset may substitute for selected-entry cleanup.",
+      "sourceID": "S01 / project policy"
+    }
+  ],
+  "verifiedProfiles": [],
+  "reviewedAt": "2026-09-20",
+  "evidenceFiles": [
+    "environment.md",
+    "provider-dossier.md"
+  ],
+  "providers": [
+    {
+      "providerID": "launchd-configuration",
+      "osBuild": "26A428",
+      "providerVersion": null,
+      "parserVersion": null,
+      "evidenceLevel": "documentaryOnly",
+      "evidenceReference": "provider-dossier.md",
+      "enumerate": "unverified",
+      "readStatus": "unverified",
+      "removeRegistration": "unverified",
+      "resetPermission": "unverified",
+      "verifyOutcome": "unverified",
+      "restoreConfiguration": "unverified",
+      "mutationEnabled": false,
+      "osIntegrationResult": "notRun",
+      "testedOSBuilds": [],
+      "reason": "Local launchd.plist manual reviewed; no real source enumeration performed.",
+      "scopeConstraints": [
+        "P1 synthetic demonstration only",
+        "No production-host mutation",
+        "No global reset",
+        "Unknown impact blocked"
+      ]
+    },
+    {
+      "providerID": "launchd-runtime",
+      "osBuild": "26A428",
+      "providerVersion": null,
+      "parserVersion": null,
+      "evidenceLevel": "documentaryOnly",
+      "evidenceReference": "provider-dossier.md",
+      "enumerate": "unverified",
+      "readStatus": "unverified",
+      "removeRegistration": "unverified",
+      "resetPermission": "unverified",
+      "verifyOutcome": "unverified",
+      "restoreConfiguration": "unverified",
+      "mutationEnabled": false,
+      "osIntegrationResult": "notRun",
+      "testedOSBuilds": [],
+      "reason": "launchctl print is diagnostic, not stable API; no runtime sample.",
+      "scopeConstraints": [
+        "P1 synthetic demonstration only",
+        "No production-host mutation",
+        "No global reset",
+        "Unknown impact blocked"
+      ]
+    },
+    {
+      "providerID": "background-items",
+      "osBuild": "26A428",
+      "providerVersion": null,
+      "parserVersion": null,
+      "evidenceLevel": "documentaryOnly",
+      "evidenceReference": "provider-dossier.md",
+      "enumerate": "unverified",
+      "readStatus": "unverified",
+      "removeRegistration": "unverified",
+      "resetPermission": "unverified",
+      "verifyOutcome": "unverified",
+      "restoreConfiguration": "unverified",
+      "mutationEnabled": false,
+      "osIntegrationResult": "notRun",
+      "testedOSBuilds": [],
+      "reason": "Apple diagnostic documentation reviewed; no dumpbtm sample.",
+      "scopeConstraints": [
+        "P1 synthetic demonstration only",
+        "No production-host mutation",
+        "No global reset",
+        "Unknown impact blocked"
+      ]
+    },
+    {
+      "providerID": "login-items",
+      "osBuild": "26A428",
+      "providerVersion": null,
+      "parserVersion": null,
+      "evidenceLevel": "documentaryOnly",
+      "evidenceReference": "provider-dossier.md",
+      "enumerate": "unverified",
+      "readStatus": "unverified",
+      "removeRegistration": "unverified",
+      "resetPermission": "unverified",
+      "verifyOutcome": "unverified",
+      "restoreConfiguration": "unverified",
+      "mutationEnabled": false,
+      "osIntegrationResult": "notRun",
+      "testedOSBuilds": [],
+      "reason": "No tested complete enumeration or item-level mutation profile.",
+      "scopeConstraints": [
+        "P1 synthetic demonstration only",
+        "No production-host mutation",
+        "No global reset",
+        "Unknown impact blocked"
+      ]
+    },
+    {
+      "providerID": "modern-permissions",
+      "osBuild": "26A428",
+      "providerVersion": null,
+      "parserVersion": null,
+      "evidenceLevel": "documentaryOnly",
+      "evidenceReference": "provider-dossier.md",
+      "enumerate": "guidedOnly",
+      "readStatus": "unverified",
+      "removeRegistration": "unverified",
+      "resetPermission": "unverified",
+      "verifyOutcome": "unverified",
+      "restoreConfiguration": "unverified",
+      "mutationEnabled": false,
+      "osIntegrationResult": "notRun",
+      "testedOSBuilds": [],
+      "reason": "Third-party full permission inventory unavailable in baseline.",
+      "scopeConstraints": [
+        "P1 synthetic demonstration only",
+        "No production-host mutation",
+        "No global reset",
+        "Unknown impact blocked"
+      ]
+    },
+    {
+      "providerID": "legacy-tcc-direct-read",
+      "osBuild": "26A428",
+      "providerVersion": null,
+      "parserVersion": null,
+      "evidenceLevel": "documentaryOnly",
+      "evidenceReference": "provider-dossier.md",
+      "enumerate": "blockedByPolicy",
+      "readStatus": "unverified",
+      "removeRegistration": "blockedByPolicy",
+      "resetPermission": "blockedByPolicy",
+      "verifyOutcome": "unverified",
+      "restoreConfiguration": "unverified",
+      "mutationEnabled": false,
+      "osIntegrationResult": "notRun",
+      "testedOSBuilds": [],
+      "reason": "macOS27+ baseline forbids TCC direct access.",
+      "scopeConstraints": [
+        "P1 synthetic demonstration only",
+        "No production-host mutation",
+        "No global reset",
+        "Unknown impact blocked"
+      ]
+    },
+    {
+      "providerID": "targeted-tcc-reset",
+      "osBuild": "26A428",
+      "providerVersion": null,
+      "parserVersion": null,
+      "evidenceLevel": "documentaryOnly",
+      "evidenceReference": "provider-dossier.md",
+      "enumerate": "unverified",
+      "readStatus": "unverified",
+      "removeRegistration": "unverified",
+      "resetPermission": "unverified",
+      "verifyOutcome": "unverified",
+      "restoreConfiguration": "unverified",
+      "mutationEnabled": false,
+      "osIntegrationResult": "notRun",
+      "testedOSBuilds": [],
+      "reason": "Manual syntax only; service/client/scope and outcome untested.",
+      "scopeConstraints": [
+        "P1 synthetic demonstration only",
+        "No production-host mutation",
+        "No global reset",
+        "Unknown impact blocked"
+      ]
+    },
+    {
+      "providerID": "local-network-location-notifications",
+      "osBuild": "26A428",
+      "providerVersion": null,
+      "parserVersion": null,
+      "evidenceLevel": "documentaryOnly",
+      "evidenceReference": "provider-dossier.md",
+      "enumerate": "guidedOnly",
+      "readStatus": "unverified",
+      "removeRegistration": "unverified",
+      "resetPermission": "unverified",
+      "verifyOutcome": "unverified",
+      "restoreConfiguration": "unverified",
+      "mutationEnabled": false,
+      "osIntegrationResult": "notRun",
+      "testedOSBuilds": [],
+      "reason": "Independent mechanisms; do not infer TCC tokens.",
+      "scopeConstraints": [
+        "P1 synthetic demonstration only",
+        "No production-host mutation",
+        "No global reset",
+        "Unknown impact blocked"
+      ]
+    },
+    {
+      "providerID": "own-helper-smappservice",
+      "osBuild": "26A428",
+      "providerVersion": null,
+      "parserVersion": null,
+      "evidenceLevel": "documentaryOnly",
+      "evidenceReference": "provider-dossier.md",
+      "enumerate": "unverified",
+      "readStatus": "unverified",
+      "removeRegistration": "unverified",
+      "resetPermission": "unverified",
+      "verifyOutcome": "unverified",
+      "restoreConfiguration": "unverified",
+      "mutationEnabled": false,
+      "osIntegrationResult": "notRun",
+      "testedOSBuilds": [],
+      "reason": "Public SDK declarations reviewed; no registration or lifecycle tests.",
+      "scopeConstraints": [
+        "P1 synthetic demonstration only",
+        "No production-host mutation",
+        "No global reset",
+        "Unknown impact blocked"
+      ]
+    },
+    {
+      "providerID": "xpc-peer-authentication",
+      "osBuild": "26A428",
+      "providerVersion": null,
+      "parserVersion": null,
+      "evidenceLevel": "documentaryOnly",
+      "evidenceReference": "provider-dossier.md",
+      "enumerate": "unverified",
+      "readStatus": "unverified",
+      "removeRegistration": "unverified",
+      "resetPermission": "unverified",
+      "verifyOutcome": "unverified",
+      "restoreConfiguration": "unverified",
+      "mutationEnabled": false,
+      "osIntegrationResult": "notRun",
+      "testedOSBuilds": [],
+      "reason": "Public signing-requirement declarations found; no signed-client integration tests.",
+      "scopeConstraints": [
+        "P1 synthetic demonstration only",
+        "No production-host mutation",
+        "No global reset",
+        "Unknown impact blocked"
+      ]
+    },
+    {
+      "providerID": "system-managed-protected",
+      "osBuild": "26A428",
+      "providerVersion": null,
+      "parserVersion": null,
+      "evidenceLevel": "documentaryOnly",
+      "evidenceReference": "provider-dossier.md",
+      "enumerate": "blockedByPolicy",
+      "readStatus": "unverified",
+      "removeRegistration": "blockedByPolicy",
+      "resetPermission": "blockedByPolicy",
+      "verifyOutcome": "unverified",
+      "restoreConfiguration": "unverified",
+      "mutationEnabled": false,
+      "osIntegrationResult": "notRun",
+      "testedOSBuilds": [],
+      "reason": "Protected and managed targets cannot be cleaned.",
+      "scopeConstraints": [
+        "P1 synthetic demonstration only",
+        "No production-host mutation",
+        "No global reset",
+        "Unknown impact blocked"
+      ]
+    }
+  ],
+  "isolatedExperiments": [
+    {
+      "id": "ISO-01",
+      "result": "notRun",
+      "mutationEnabled": false,
+      "reason": "No approved rollback-isolated environment supplied."
+    },
+    {
+      "id": "ISO-02",
+      "result": "notRun",
+      "mutationEnabled": false,
+      "reason": "No approved rollback-isolated environment supplied."
+    },
+    {
+      "id": "ISO-03",
+      "result": "notRun",
+      "mutationEnabled": false,
+      "reason": "No approved rollback-isolated environment supplied."
+    },
+    {
+      "id": "ISO-04",
+      "result": "notRun",
+      "mutationEnabled": false,
+      "reason": "No approved rollback-isolated environment supplied."
+    },
+    {
+      "id": "ISO-05",
+      "result": "notRun",
+      "mutationEnabled": false,
+      "reason": "No approved rollback-isolated environment supplied."
+    },
+    {
+      "id": "ISO-06",
+      "result": "notRun",
+      "mutationEnabled": false,
+      "reason": "No approved rollback-isolated environment supplied."
+    },
+    {
+      "id": "ISO-07",
+      "result": "notRun",
+      "mutationEnabled": false,
+      "reason": "No approved rollback-isolated environment supplied."
+    },
+    {
+      "id": "ISO-08",
+      "result": "notRun",
+      "mutationEnabled": false,
+      "reason": "No approved rollback-isolated environment supplied."
+    }
+  ]
+}
