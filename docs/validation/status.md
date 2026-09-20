@@ -4,7 +4,7 @@
 
 - 原生 SwiftUI App、明确合成演示与 dry-run 已建立；真实扫描仅声明范围内只读，失败和未覆盖来源可见。
 - Core 30、Security 11、Platform 28 项测试通过（本轮增加路径/schema/token 回归）。静态签名读取只提供 metadata，不证明信任有效。
-- 最终完整 11 项 GUI 回归通过（94.763 秒，0 失败）；报告预览首次辅助功能断言失败的原因、修正与针对性复测保留在综合报告。
+- 本轮最终完整 11 项 GUI 回归通过（99.134 秒，0 失败）；首次过滤隐藏选择断言失败与同步改进、单项复测详见 VM 接续报告。历史报告保留此前轮次结果。
 - P3/P4 事务、恢复和 helper 请求策略有合成测试，但真实 driver、持久化 journal、XPC 传输和 helper 生命周期尚未实现/验证。
 - P5 提供 19 类权限注册表与降级引导；P6 提供默认脱敏 JSON/CSV 预览；本地预览打包、正常 `.app` 启动通过；发布门禁 exit 2 拒绝非 Developer ID、无 Hardened Runtime 且含调试 entitlement 的包，正式分发未通过。
 - 隔离清理、实际权限重置、helper 攻击测试、跨 OS/Intel、完整可访问性、Developer ID/公证与正式发布均未通过。

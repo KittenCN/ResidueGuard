@@ -35,16 +35,17 @@
   "evidenceFiles": [
     "environment.md",
     "provider-dossier.md",
-    "p2-results-2026-09-20.md"
+    "p2-results-2026-09-20.md",
+    "vm-continuation-2026-09-20.md"
   ],
   "providers": [
     {
       "providerID": "launchd-configuration",
       "osBuild": "26A428",
       "providerVersion": "launch-plist-readonly-v1",
-      "parserVersion": "1",
+      "parserVersion": "launch-plist-v2",
       "evidenceLevel": "limitedReadOnlyHostObservation",
-      "evidenceReference": "p2-results-2026-09-20.md",
+      "evidenceReference": "vm-continuation-2026-09-20.md",
       "enumerate": "readOnly",
       "readStatus": "unverified",
       "removeRegistration": "unverified",
@@ -58,7 +59,8 @@
       ],
       "reason": "Bounded immediate plist enumeration observed; malformed rows retained. No runtime, ownership-complete or mutation validation.",
       "scopeConstraints": [
-        "P1 synthetic demonstration only",
+        "Explicit current-user or standard shared launch configuration roots",
+        "Limited read-only host observation; no mutation validation",
         "No production-host mutation",
         "No global reset",
         "Unknown impact blocked"
@@ -310,49 +312,49 @@
       "id": "ISO-01",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "No approved rollback-isolated environment supplied."
+      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
     },
     {
       "id": "ISO-02",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "No approved rollback-isolated environment supplied."
+      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
     },
     {
       "id": "ISO-03",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "No approved rollback-isolated environment supplied."
+      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
     },
     {
       "id": "ISO-04",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "No approved rollback-isolated environment supplied."
+      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
     },
     {
       "id": "ISO-05",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "No approved rollback-isolated environment supplied."
+      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
     },
     {
       "id": "ISO-06",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "No approved rollback-isolated environment supplied."
+      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
     },
     {
       "id": "ISO-07",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "No approved rollback-isolated environment supplied."
+      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
     },
     {
       "id": "ISO-08",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "No approved rollback-isolated environment supplied."
+      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
     }
   ]
 }

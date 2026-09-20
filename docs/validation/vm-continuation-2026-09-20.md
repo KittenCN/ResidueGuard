@@ -32,3 +32,17 @@
 ## 本轮已有构建证据
 
 `./script/test.sh core` 30 项通过；`./script/build_and_run.sh --build-only`、`--verify` 均 exit 0（BUILD SUCCEEDED / 正常 .app 进程存在）。GUI 外观工具对本 App 返回 native pipe closed，故不宣称人工外观验收完成；自动 XCUITest 单列最终结果。
+
+## 本轮真实只读复扫
+
+`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift run --package-path Packages/ResiduePlatform ResidueProbe --host-readonly` exit 0：14 条配置记录、44 个应用实例、0 高可信残留；应用索引仍 partial，三个启动源为 completeWithinDeclaredScope / partial / completeWithinDeclaredScope。runtime、BTM、登录项、TCC 来源仍 unsupported。仅输出计数，不提交软件清单或原始路径。v2 parser 已参与本次复扫，矩阵更新为本报告证据，但写能力仍全部 false。
+
+回滚副本的 Disk.img / AuxiliaryStorage 已完成 SHA-256 读取（exit 0），摘要仅留本地。它证明副本可完整读取，不证明恢复启动成功。VirtualBuddy APFS clone/共享目录方案参考其[官方 README](https://github.com/insidegui/VirtualBuddy#taking-advantage-of-apfs)。
+
+## GUI 最终验证与接续点
+
+首次完整 `./script/test.sh ui` exit 65：11 项中 1 项过滤隐藏选择断言失败（98.790 秒）；加入失败时 AX 层级诊断后，针对性单项通过（9.331 秒）。不能仅据此确定瞬时失败原因。测试随后明确等待选择入口启用、搜索框实际值等于输入、目标计数发布，并额外检查过滤行不再可见；未删除原断言或放宽安全规则。最终完整 UI 回归 exit 0，11 项、0 失败，99.134 秒。该结果不承诺已根除所有间歇性问题。
+
+本轮修复和夹具已分批 push main：`62c9280`、`1fc1c2f`；后续文档/测试同步以 Git 为准。宿主未做任何 cleanup/reset/helper 安装。VM 截图最终仍为登录页：需要用户本地登录，无需传递密码。下一步为客体只读环境确认、共享目录挂载、回滚恢复验证，再运行自有 Agent 实验并导出证据；不能将这一步改在宿主执行。
+
+全项目未完成：真实抗竞争清理 driver、持久化 journal/恢复、签名 XPC/helper 生命周期与攻击测试、权限精确能力及正式分发仍有开发/实测缺口。宿主没有有效签名身份，Developer ID/公证也尚未具备。当前测试通过仅覆盖报告列明范围。

@@ -32,10 +32,19 @@ final class ResidueGuardUITests: XCTestCase {
     func testFilteringPreservesSelectionAndPageChangeClearsIt() {
         openDemoAgents()
         app.checkBoxes["select.demo.orphan"].click()
-        app.textFields["records.search"].click()
-        app.textFields["records.search"].typeText("no-match")
-        XCTAssertTrue(app.staticTexts["已选 1 项，其中 1 项当前隐藏"].exists)
-        XCTAssertTrue(app.buttons["review.open"].isEnabled)
+        // Observe each state transition instead of assuming the text input's
+        // event dispatch also completed SwiftUI's filtering and AX publication.
+        let review = app.buttons["review.open"]
+        expectation(for: NSPredicate(format: "enabled == true"), evaluatedWith: review)
+        waitForExpectations(timeout: 3)
+        let search = app.textFields["records.search"]
+        search.click()
+        search.typeText("no-match")
+        expectation(for: NSPredicate(format: "value == %@", "no-match"), evaluatedWith: search)
+        waitForExpectations(timeout: 3)
+        XCTAssertTrue(app.staticTexts["已选 1 项，其中 1 项当前隐藏"].waitForExistence(timeout: 3), app.debugDescription)
+        XCTAssertFalse(app.checkBoxes["select.demo.orphan"].exists)
+        XCTAssertTrue(review.isEnabled)
         app.staticTexts["后台登记"].firstMatch.click()
         app.staticTexts["用户启动代理"].firstMatch.click()
         XCTAssertFalse(app.buttons["review.open"].isEnabled)
