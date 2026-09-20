@@ -6,7 +6,7 @@
 - VM 中修复目录已授权但读取上级目录失败导致零行的问题：同一自有目录实际返回 1 条；目标未授权仍为无法核实，不误标红。
 - Core 60 项、Transactions 6 项通过：修复未验证注册状态仍可完成事务的错误，两层共用结果判断。见[修复证据](transaction-outcome-fix-2026-09-20.md)。
 - Platform 50 项、Persistence 41 项、Backup 54 项通过。日志含 18 个独立进程 SIGKILL 场景（含schema2审计写入与迁移）；VM 固定自有夹具的只读备份及精确 runtime 探针通过。
-- Quarantine 79 项、Recovery 10 项通过：临时夹具备份核验、同卷不覆盖隔离/恢复和只读恢复检查；审计模型保持内容完整性与来源真实性分离。没有生产构造入口。
+- Quarantine 79 项、Recovery 20 项通过：临时夹具备份核验、同卷不覆盖隔离/恢复和只读恢复检查；审计模型保持内容完整性与来源真实性分离。没有生产构造入口。
 - AuditImport 15 项真实文件测试通过，App 已接入；其后 History UI 4 通过、1 系统 picker 跳过、0 失败。
 - GUI 最新全量结果：22 项中 21 通过、1 显式跳过、0 失败（273.497 秒）。跳过系统 picker 自动输入；随后另行在VM Release实际选择文件并导入显示成功，不能据此改写XCTest结果。新文件读取模块集成的验证见[导入报告](history-report-import-2026-09-20.md)。
 - 固定自有 VM 隔离/恢复 probe 已实现，最新 Backup 54 + Quarantine 79 项测试通过（历史阶段计数见专项报告）；宿主拒绝（exit77）、参数拒绝（exit64）。客体固定正常往返已实际退出0并完成各次核验，见[受限实验上下文](owned-fixture-context-2026-09-20.md)。
@@ -50,3 +50,5 @@ P4新增有界HelperRequest wire codec：16KiB/深度/字符串限制，严格�
 只读索引/候选图新增移动、同ID/同名不同签名提示和暂缺后恢复的边界补测：Core60、Platform50项通过，四阶段行存在性显式验证。只证明不变红/不产生执行能力，不是有效签名替代安装或真实updater全矩阵验收，见[误判边界](index-candidate-misclassification-matrix-2026-09-20.md)。
 
 最小窗口定向GUI回归1项通过、0失败/跳过（23.071秒）：实际980×692点，双确认按钮可达，第二确认可用时Escape取消，重开须重新批准范围。未改变生产UI，未重跑全量GUI；不等于完整VoiceOver/高对比度验收。见[小窗口与键盘](minimum-window-keyboard-2026-09-20.md)。
+
+独立合成恢复新计划与双确认模型新增10项，Recovery全量20项通过。全部产物permitsMutation=false，未接fresh文件核验、历史导入授权或真实执行；见[恢复合成模型](synthetic-recovery-consent-2026-09-20.md)。
