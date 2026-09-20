@@ -104,14 +104,6 @@ public actor PersistentTransactionDriver: TransactionDriver {
     private static func classify(_ effects: StepEffects, for action: TransactionAction) -> StepResult {
         let all = [effects.file, effects.runtime, effects.registration, effects.permission]
         if all.contains(.failed) { return .failed }
-        guard effects.permission == .notAttempted,
-              action != .bootoutExactService || effects.file == .notAttempted,
-              action != .quarantineLaunchConfiguration || effects.runtime == .notAttempted else { return .unverified }
-        let required = action == .bootoutExactService ? effects.runtime : effects.file
-        guard required == .succeeded else { return .unverified }
-        // Registration is observational: pending refresh is not a successful purge.
-        // A genuinely unverified registration outcome cannot advance the saga.
-        guard effects.registration != .unverified else { return .unverified }
-        return .succeeded
+        return effects.isVerified(for: action) ? .succeeded : .unverified
     }
 }

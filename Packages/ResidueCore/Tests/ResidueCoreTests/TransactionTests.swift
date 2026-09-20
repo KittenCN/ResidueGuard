@@ -15,7 +15,7 @@ private func receipt(_ plan: VerifiedTransactionPlan, nonce: UUID = UUID()) -> T
           expiresAt: plan.expiresAt, confirmationEvents: (0..<plan.requiredConfirmations).map { _ in UUID() })
 }
 private actor FakeTransactionDriver: TransactionDriver {
-    enum Fault { case none, journalClaim, backup, journalPrepare, fingerprintAfterStop, service, uncertainService, resultJournal, authorization, unexpectedPermission }
+    enum Fault { case uncertainRegistrationStop, uncertainRegistrationLast, none, journalClaim, backup, journalPrepare, fingerprintAfterStop, service, uncertainService, resultJournal, authorization, unexpectedPermission }
     let fault: Fault
     var events: [String] = []
     var nonces = Set<UUID>()
@@ -45,9 +45,9 @@ private actor FakeTransactionDriver: TransactionDriver {
         events.append("perform:\(step.id)")
         if step.action == .bootoutExactService {
             if fault == .uncertainService { throw TransactionFailure.outcomeUnverified }
-            return .init(runtime: fault == .service ? .failed : .succeeded, registration: .pendingSystemRefresh, permission: fault == .unexpectedPermission ? .succeeded : .notAttempted)
+            return .init(runtime: fault == .service ? .failed : .succeeded, registration: fault == .uncertainRegistrationStop ? .unverified : .pendingSystemRefresh, permission: fault == .unexpectedPermission ? .succeeded : .notAttempted)
         }
-        return .init(file: .succeeded, registration: .pendingSystemRefresh)
+        return .init(file: .succeeded, registration: fault == .uncertainRegistrationLast ? .unverified : .pendingSystemRefresh)
     }
     func journalResult(plan: VerifiedTransactionPlan, result: TransactionStepResult) throws {
         events.append("result:\(result.stepID)")
@@ -162,5 +162,17 @@ private actor FakeTransactionDriver: TransactionDriver {
             try VerifiedTransactionPlan.validate(scope: scope, profileID: profile, createdAt: transactionNow,
                 expiresAt: transactionNow.addingTimeInterval(120), steps: [stop], targets: [target], impactApproved: true)
         }
+    }
+}
+
+@Test func uncertainRegistrationCannotCompleteEvenOnFinalStep() async throws {
+    for fault in [FakeTransactionDriver.Fault.uncertainRegistrationStop, .uncertainRegistrationLast] {
+        let plan = try transactionPlan()
+        let driver = FakeTransactionDriver(fault)
+        let coordinator = TransactionCoordinator(driver: driver, gate: .syntheticTests, now: { transactionNow })
+        let result = await coordinator.run(plan: plan, consent: receipt(plan))
+        #expect(!result.completed)
+        #expect(result.failure == .outcomeUnverified)
+        #expect(result.results.count == (fault == .uncertainRegistrationStop ? 1 : 2))
     }
 }

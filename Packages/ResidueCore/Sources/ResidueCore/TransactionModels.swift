@@ -92,6 +92,13 @@ public struct StepEffects: Codable, Equatable, Sendable {
         self.file = file; self.runtime = runtime; self.registration = registration; self.permission = permission
     }
     var hasFailure: Bool { [file, runtime, registration, permission].contains(.failed) }
+    /// Pending registration refresh is observational, never proof of a purge.
+    public func isVerified(for action: TransactionAction) -> Bool {
+        guard !hasFailure, permission == .notAttempted, registration != .unverified,
+              action != .bootoutExactService || file == .notAttempted,
+              action != .quarantineLaunchConfiguration || runtime == .notAttempted else { return false }
+        return (action == .bootoutExactService ? runtime : file) == .succeeded
+    }
 }
 public struct TransactionStepResult: Sendable { public let stepID: String; public let effects: StepEffects }
 public struct TransactionReport: Sendable {

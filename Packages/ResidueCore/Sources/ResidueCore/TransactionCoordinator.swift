@@ -85,13 +85,7 @@ public actor TransactionCoordinator {
                 do { try await driver.journalResult(plan: plan, result: result) }
                 catch { throw TransactionFailure.journalFailed }
                 if effects.hasFailure { throw TransactionFailure.effectFailed }
-                guard effects.permission == .notAttempted,
-                      step.action != .bootoutExactService || effects.file == .notAttempted,
-                      step.action != .quarantineLaunchConfiguration || effects.runtime == .notAttempted else {
-                    throw TransactionFailure.outcomeUnverified
-                }
-                let requiredEffect = step.action == .bootoutExactService ? effects.runtime : effects.file
-                guard requiredEffect == .succeeded else { throw TransactionFailure.outcomeUnverified }
+                guard effects.isVerified(for: step.action) else { throw TransactionFailure.outcomeUnverified }
                 try checkTimeAndCancellation(plan, consent)
             }
             return report(nil)
