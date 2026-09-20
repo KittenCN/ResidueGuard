@@ -13,6 +13,13 @@ struct ScanControlsView: View {
             HStack {
                 Button(store.isSyntheticScan ? "扫描合成测试来源" : "开始只读扫描") { store.startScan() }
                     .disabled(store.isScanning || store.isLoading).accessibilityIdentifier("scan.start")
+                if !store.configuredLaunchRoots.isEmpty {
+                    Menu("局部复扫") {
+                        ForEach(store.configuredLaunchRoots, id: \.absoluteString) { root in
+                            Button(root.path) { store.startScan(onlyLaunchRoot: root) }
+                        }
+                    }.disabled(store.isScanning || store.isLoading).accessibilityIdentifier("scan.rescanRoot")
+                }
                 if store.isScanning {
                     ProgressView().controlSize(.small)
                     Button(store.cancellationRequested ? "正在取消…" : "取消扫描") { store.cancelScan() }

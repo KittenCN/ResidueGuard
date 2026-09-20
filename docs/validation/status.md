@@ -32,3 +32,5 @@ BTM独立VM只读探针在5秒与30秒预算下均超时、双流为空，原因
 固定VM实验已接入独立持久日志，最终v7往返exit0，两步prepare/result与严格只读重开通过；另一个进程只读比较历史/源/隔离文件成功。Backup54、Quarantine53、Persistence41项通过，后者含18个进程崩溃场景。见[VM日志集成](owned-experiment-journal-2026-09-20.md)、[独立日志约束](owned-fixture-experiment-journal-2026-09-20.md)、[只读根枚举](owned-fixture-audit-reader-2026-09-20.md)。runtime来源字段已在新实验记录，旧记录缺失不会补造；VM动作中断矩阵与恢复新授权仍待完成；历史数据不授予执行能力。
 
 最新VM v8往返已持久保存两步runtime provenance；独立reader v2同时读到3条新旧实验，旧两条证据步数0、新一条2，均源匹配/隔离为空、无授权。Platform47、Persistence41、Backup54、Quarantine53项通过。
+
+覆盖范围约束的快照比较与已授权配置根局部复扫已接入：不完整/未请求范围不产生负面观察、不替换完整基线，比较移出主线程。Core59项通过（含10,000记录比较约0.23秒），GUI22项中21通过/1显式跳过/0失败。见[快照比较验证](coverage-aware-snapshot-diff-2026-09-20.md)。

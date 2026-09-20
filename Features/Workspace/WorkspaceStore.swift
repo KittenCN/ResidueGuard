@@ -37,7 +37,7 @@ final class WorkspaceStore {
     private(set) var configuredLaunchRoots: [URL] = []
     private(set) var configuredApplicationRoots: [URL] = []
     private var scanTask: Task<Void, Never>?
-    private var previousSourceRecords: [SourceRecord]?
+    private var comparisonBaseline: ObservationSnapshot?
     private let scanner: WorkspaceScanner
     init(scanner: WorkspaceScanner = .live, syntheticScan: Bool = false) {
         self.scanner = scanner; self.isSyntheticScan = syntheticScan
@@ -88,7 +88,7 @@ final class WorkspaceStore {
         do {
             let result = try await DemoLoader.load(from: url)
             guard !Task.isCancelled else { notice = "演示加载已取消。"; return }
-            previousSourceRecords = nil
+            comparisonBaseline = nil
             ownershipGraph = nil
             sourceRecords = result.map(WorkspaceRecord.init(demo:)); coverage = []; isDemo = true; loadedAt = Date(); generation = UUID().uuidString
             selectedIDs.removeAll(); inspectedID = nil
@@ -97,7 +97,7 @@ final class WorkspaceStore {
     }
     func unloadDemo() {
         ownershipGraph = nil
-        previousSourceRecords = nil
+        comparisonBaseline = nil
         sourceRecords = []; coverage = []; isDemo = false; loadedAt = nil; generation = UUID().uuidString
         selectedIDs.removeAll(); inspectedID = nil; notice = "已退出演示；尚未运行真实扫描。"
     }
@@ -111,10 +111,13 @@ final class WorkspaceStore {
         if applications { configuredApplicationRoots = urls } else { configuredLaunchRoots = urls }
         notice = "扫描目录已更新；点击只读扫描后才会读取。授权不持久化。"
     }
-    func startScan() {
+    func startScan(onlyLaunchRoot: URL? = nil) {
         guard !isScanning, !isLoading else { return }
         guard isSyntheticScan || !configuredLaunchRoots.isEmpty else {
             notice = "请先选择启动配置目录，明确授权只读范围。"; return
+        }
+        if let onlyLaunchRoot, !configuredLaunchRoots.contains(onlyLaunchRoot) {
+            notice = "局部复扫仅接受本次已授权的配置目录。"; return
         }
         ownershipGraph = nil
         sourceRecords = []; coverage = []; isDemo = false; loadedAt = nil
@@ -123,7 +126,8 @@ final class WorkspaceStore {
         let requestedGeneration = generation
         isScanning = true; cancellationRequested = false
         notice = "正在只读采集；旧结果已清除，未访问的目录不会计为空。"
-        let roots = configuredLaunchRoots
+        let roots = onlyLaunchRoot.map { [$0] } ?? configuredLaunchRoots
+        let omittedRoots = configuredLaunchRoots.filter { !roots.contains($0) }
         let apps = configuredApplicationRoots
         let configuration = ScanConfiguration(launchRoots: roots.map {
             ScanRoot(url: $0, scope: $0.lastPathComponent == "LaunchDaemons" ? "systemDaemons" : ($0.path.hasPrefix("/Library/") || $0.path.hasPrefix("/System/") ? "sharedAgents" : "currentUser"))
@@ -135,22 +139,79 @@ final class WorkspaceStore {
                 granted.forEach { $0.stopAccessingSecurityScopedResource() }
                 isScanning = false; scanTask = nil
             }
-            let snapshot = await scanner.scan(configuration)
+            let observed = await scanner.scan(configuration)
+            let snapshot = Self.withUnrequestedCoverage(observed, roots: omittedRoots)
+            guard generation == requestedGeneration else { return }
+            let baseline = comparisonBaseline
+            let comparisonWork = Task.detached(priority: .utility) {
+                let observation = Self.comparisonObservation(snapshot)
+                let comparison = baseline.map { SnapshotComparison.compare(previous: $0, current: observation) }
+                return (observation, comparison, SnapshotComparison.canUseAsBaseline(snapshot: observation, providerIDs: ["launchd.configuration"]))
+            }
+            let (currentObservation, comparison, completeComparison) = await withTaskCancellationHandler {
+                await comparisonWork.value
+            } onCancel: { comparisonWork.cancel() }
             guard generation == requestedGeneration else { return }
             sourceRecords = snapshot.rows.map(WorkspaceRecord.init(scan:))
             ownershipGraph = snapshot.ownershipGraph
             coverage = snapshot.coverage; loadedAt = snapshot.observedAt
             generation = snapshot.generation
-            let currentSources = snapshot.rows.map(\.record)
-            let comparison = previousSourceRecords.map { SnapshotComparison.compare(previous: $0, current: currentSources) }
-            previousSourceRecords = currentSources
+            let replacesBaseline = !cancellationRequested && !snapshot.isCancelled && !configuration.rootsTruncated && completeComparison
+            if replacesBaseline { comparisonBaseline = currentObservation }
             notice = cancellationRequested
                 ? "扫描已取消；显示已返回的部分结果。未访问范围不代表没有记录。"
                 : "已完成本次只读采集；请检查来源覆盖与未验证范围。所有系统修改仍禁用。"
+            if onlyLaunchRoot != nil { notice += " 本次局部复扫；其他配置目录未请求，应用索引仍按已选范围观察。" }
             if let comparison {
-                notice += " 本次新增观察 \(comparison.added.count)、变化 \(comparison.changed.count)、未再次观察到 \(comparison.notObserved.count)（不代表已删除）、身份冲突 \(comparison.ambiguous.count)。"
+                notice += " 本次首次观察 \(comparison.firstObserved.count)、变化 \(comparison.changed.count)、同范围未再次观察到 \(comparison.notObserved.count)（不代表已删除）、身份冲突 \(comparison.ambiguous.count)。"
+                if !comparison.limitedScopes.isEmpty || !comparison.diagnostics.isEmpty {
+                    notice += " 比较范围受限 \(comparison.limitedScopes.count) 处；未访问或变更范围不推断缺失。"
+                }
             }
+            notice += replacesBaseline ? " 已更新完整配置比较基线。" : (comparisonBaseline == nil ? " 尚无完整配置比较基线。" : " 本次未更新配置比较基线；保留上次完整观察。")
         }
+    }
+    private static func withUnrequestedCoverage(_ snapshot: ScanSnapshot, roots: [URL]) -> ScanSnapshot {
+        guard !roots.isEmpty else { return snapshot }
+        let build = snapshot.coverage.first(where: { $0.providerID == "launchd.configuration" })?.osBuild ?? "unverified"
+        let omitted = roots.map { root in
+            ScanCoverage(providerID: "launchd.configuration", state: .partial, declaredRoots: [root.path],
+                diagnostics: ["本次局部复扫未请求此目录；没有读取，不能据此判断记录缺失。"],
+                userScopes: [root.lastPathComponent == "LaunchDaemons" ? "systemDaemons" :
+                    (root.path.hasPrefix("/Library/") || root.path.hasPrefix("/System/") ? "sharedAgents" : "currentUser")],
+                osBuild: build, generation: snapshot.generation, skippedAreas: ["notRequested"])
+        }
+        return .init(generation: snapshot.generation, observedAt: snapshot.observedAt, rows: snapshot.rows,
+            coverage: snapshot.coverage + omitted, applications: snapshot.applications, ownershipGraph: snapshot.ownershipGraph)
+    }
+    #if DEBUG
+    func configureSyntheticComparisonRoots() {
+        guard isSyntheticScan else { return }
+        configuredLaunchRoots = [URL(fileURLWithPath: "/Synthetic/LaunchAgents"), URL(fileURLWithPath: "/Synthetic/OtherLaunchAgents")]
+    }
+    #endif
+    private nonisolated static func comparisonObservation(_ snapshot: ScanSnapshot) -> ObservationSnapshot {
+        let coverage = snapshot.coverage.filter { $0.providerID == "launchd.configuration" }
+        let boundaries: [SnapshotComparisonCoverage] = coverage.map { item in
+            // The live provider emits one exact root/scope pair. Missing or many-to-many
+            // dimensions stay invalid instead of disappearing or inventing a cross product.
+            let unambiguous = item.declaredRoots.count == 1 && item.userScopes.count == 1
+            return SnapshotComparisonCoverage(scope: .init(providerID: item.providerID,
+                userScope: unambiguous ? item.userScopes[0] : "unverified",
+                declaredRoot: unambiguous ? item.declaredRoots[0] : "", osBuild: item.osBuild),
+                generation: item.generation, state: item.state)
+        }
+        let records = snapshot.rows.filter { $0.record.id.providerID == "launchd.configuration" }.map { row in
+            let record = row.record
+            let parent = URL(fileURLWithPath: record.sourceArtifact).deletingLastPathComponent().path
+            let matches = boundaries.filter { $0.scope.providerID == record.id.providerID
+                && $0.scope.userScope == record.id.scope && $0.scope.declaredRoot == parent }
+            // An unmatched/ambiguous binding is explicit invalid input, never a guessed root.
+            let scope = matches.count == 1 ? matches[0].scope : SnapshotComparisonScope(
+                providerID: record.id.providerID, userScope: record.id.scope, declaredRoot: "", osBuild: "unverified")
+            return ScopedSnapshotRecord(record: record, scope: scope)
+        }
+        return .init(generation: snapshot.generation, records: records, coverage: boundaries)
     }
     func cancelScan() {
         guard isScanning else { return }

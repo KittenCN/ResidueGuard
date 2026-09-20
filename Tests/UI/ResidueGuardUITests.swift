@@ -153,4 +153,45 @@ final class ResidueGuardUITests: XCTestCase {
         XCTAssertFalse(content.contains("/Synthetic/"))
         XCTAssertFalse(content.contains("fixture-readonly"))
     }
+    func testPartialScanDoesNotReplaceCompleteComparisonBaseline() {
+        app.terminate()
+        app.launchArguments = ["--ui-synthetic-scan", "--ui-snapshot-fixture"]
+        app.launch()
+        let notice = app.staticTexts["workspace.notice"]
+        func awaitNotice(_ text: String) {
+            expectation(for: NSPredicate(format: "value CONTAINS %@", text), evaluatedWith: notice)
+            waitForExpectations(timeout: 5)
+        }
+        app.buttons["scan.start"].click()
+        awaitNotice("已更新完整配置比较基线")
+        app.buttons["scan.start"].click()
+        awaitNotice("保留上次完整观察")
+        XCTAssertTrue((notice.value as? String ?? "").contains("同范围未再次观察到 0"))
+        XCTAssertTrue((notice.value as? String ?? "").contains("比较范围受限"))
+        app.buttons["scan.start"].click()
+        awaitNotice("已更新完整配置比较基线")
+        XCTAssertTrue((notice.value as? String ?? "").contains("本次首次观察 0、变化 0、同范围未再次观察到 0"))
+        XCTAssertTrue(app.staticTexts["测试注入 · 合成扫描结果，非本机数据"].exists)
+    }
+
+    func testLocalRescanMarksOtherAuthorizedRootsUnrequested() {
+        app.terminate()
+        app.launchArguments = ["--ui-synthetic-scan", "--ui-snapshot-fixture"]
+        app.launch()
+        let notice = app.staticTexts["workspace.notice"]
+        app.buttons["scan.start"].click()
+        expectation(for: NSPredicate(format: "value CONTAINS %@", "已更新完整配置比较基线"), evaluatedWith: notice)
+        waitForExpectations(timeout: 5)
+        let rescan = app.descendants(matching: .any)["scan.rescanRoot"].firstMatch
+        XCTAssertTrue(rescan.waitForExistence(timeout: 3))
+        rescan.click()
+        app.menuItems["/Synthetic/OtherLaunchAgents"].click()
+        expectation(for: NSPredicate(format: "value CONTAINS %@", "本次局部复扫"), evaluatedWith: notice)
+        waitForExpectations(timeout: 5)
+        let value = notice.value as? String ?? ""
+        XCTAssertTrue(value.contains("同范围未再次观察到 0"))
+        XCTAssertTrue(value.contains("保留上次完整观察"))
+        XCTAssertTrue(app.staticTexts["本次局部复扫未请求此目录；没有读取，不能据此判断记录缺失。；notRequested"].exists)
+    }
+
 }

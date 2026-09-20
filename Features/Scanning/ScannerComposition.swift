@@ -6,6 +6,12 @@ extension WorkspaceStore {
     static func production() -> WorkspaceStore {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--ui-synthetic-scan") {
+            if ProcessInfo.processInfo.arguments.contains("--ui-snapshot-fixture") {
+                let sequence = SyntheticComparisonSequence()
+                let store = WorkspaceStore(scanner: WorkspaceScanner { configuration in await sequence.next(configuration) }, syntheticScan: true)
+                store.configureSyntheticComparisonRoots()
+                return store
+            }
             let ownershipFixture = ProcessInfo.processInfo.arguments.contains("--ui-ownership-fixture")
             let slow = ProcessInfo.processInfo.arguments.contains("--ui-slow-scan")
             return WorkspaceStore(scanner: WorkspaceScanner { _ in
@@ -35,3 +41,25 @@ extension WorkspaceStore {
         return WorkspaceStore()
     }
 }
+
+#if DEBUG
+private actor SyntheticComparisonSequence {
+    private var count = 0
+    func next(_ configuration: ScanConfiguration) -> ScanSnapshot {
+        count += 1
+        let partial = count == 2 && configuration.launchRoots.count != 1, generation = UUID().uuidString, now = Date()
+        let record = SourceRecord(id: .init(providerID: "launchd.configuration", scope: "currentUser", nativeIdentity: "synthetic-comparison"),
+            category: "launchConfiguration", observedAt: now, generation: generation,
+            sourceArtifact: "/Synthetic/LaunchAgents/comparison.plist", displayName: "合成比较·固定项目",
+            declaredAppIDs: [], targetReferences: [], rawMetadata: ["fixture": "synthetic-not-user-data"], parseWarnings: [])
+        let includesSource = configuration.launchRoots.contains { $0.url.path == "/Synthetic/LaunchAgents" }
+        let rows: [ScanRow] = partial || !includesSource ? [] : [.init(record: record, presence: .unknown,
+            capability: .init(profileID: "synthetic-scan", state: .readOnly, testedOSBuilds: [], reason: "合成比较夹具"), evidence: [])]
+        return .init(generation: generation, observedAt: now, rows: rows, coverage: configuration.launchRoots.map { root in
+            .init(providerID: "launchd.configuration", state: partial ? .permissionDenied : .completeWithinDeclaredScope,
+                declaredRoots: [root.url.path], userScopes: ["currentUser"], osBuild: "synthetic-tests",
+                generation: generation, parsedCount: root.url.path == "/Synthetic/LaunchAgents" ? rows.count : 0)
+        })
+    }
+}
+#endif
