@@ -54,3 +54,5 @@ P4新增有界HelperRequest wire codec：16KiB/深度/字符串限制，严格�
 独立合成恢复新计划与双确认模型新增10项，Recovery全量20项通过。全部产物permitsMutation=false，未接fresh文件核验、历史导入授权或真实执行；见[恢复合成模型](synthetic-recovery-consent-2026-09-20.md)。
 
 近期直接目标消失保护已接入工作区长期历史：同来源/指纹/目标曾存在后变缺失保持unknown，首次缺失语义不变；后台有界比较，取消/旧请求不提交。Platform56项通过及实际Release双架构构建/签名检查通过，见[直接目标保护](recent-direct-target-disappearance-2026-09-20.md)。
+
+已有Rosetta下实际x86_64执行：Core60项、Platform56项均通过，测试bundle均为单x86_64。先前SwiftPM runner因arm64-only失败，改用已安装公开xctest运行并保留失败记录；这是Apple Silicon转译验证，不是Intel硬件/GUI验收。见[跨架构记录](rosetta-core-tests-2026-09-20.md)。

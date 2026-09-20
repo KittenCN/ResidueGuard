@@ -49,7 +49,13 @@
     "source-identity-race-research-2026-09-20.md",
     "helper-wire-codec-2026-09-20.md",
     "status-wire-xpc-experiment-2026-09-20.md",
-    "large-scan-gui-fixture-2026-09-20.md"
+    "large-scan-gui-fixture-2026-09-20.md",
+    "scoped-diagnostic-notfound-research-2026-09-20.md",
+    "index-candidate-misclassification-matrix-2026-09-20.md",
+    "recent-direct-target-disappearance-2026-09-20.md",
+    "minimum-window-keyboard-2026-09-20.md",
+    "synthetic-recovery-consent-2026-09-20.md",
+    "rosetta-core-tests-2026-09-20.md"
   ],
   "providers": [
     {
