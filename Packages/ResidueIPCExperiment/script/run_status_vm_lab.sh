@@ -11,6 +11,14 @@ RESULT="$SOURCE/status-wire-vm-results.txt"
 LAB="$HOME/Applications/status-wire-lab-$(/usr/bin/uuidgen)"
 mkdir -m 700 "$LAB"
 exec > >(tee "$RESULT") 2>&1
+/usr/bin/codesign --verify --strict "$SOURCE/StatusSessionReader"
+EXPECTED_CALLER_SESSION="$("$SOURCE/StatusSessionReader")"
+case "$EXPECTED_CALLER_SESSION" in ''|*[!0-9]*) echo 'REFUSED caller session'; exit 65;; esac
+[ "${#EXPECTED_CALLER_SESSION}" -le 10 ] && [ "$EXPECTED_CALLER_SESSION" -gt 0 ] && [ "$EXPECTED_CALLER_SESSION" -le 2147483647 ] || exit 65
+# Harness-only expectation; client independently checks its own session before IPC.
+(umask 077; /usr/bin/plutil -create xml1 "$LAB/status-session.plist")
+/usr/bin/plutil -insert labUUID -string "${LAB##*status-wire-lab-}" "$LAB/status-session.plist"
+/usr/bin/plutil -insert expectedCallerSession -string "$EXPECTED_CALLER_SESSION" "$LAB/status-session.plist"
 /usr/bin/ditto "$SOURCE/status-peer-pins.plist" "$LAB/status-peer-pins.plist"
 for name in accepted deniedPrepare deniedExecute deniedExecutionStatus deniedRecovery oversize duplicateField badVersion truncated messageLimit connectionLimit invalidatedConnection wrongClient wrongServer uidMismatch sessionMismatch; do
     /usr/bin/ditto "$SOURCE/$name.app" "$LAB/$name.app"

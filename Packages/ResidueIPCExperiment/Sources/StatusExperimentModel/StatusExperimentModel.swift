@@ -38,8 +38,8 @@ public enum StatusLabPolicy {
         case .prepare, .executeOnce, .executionStatus, .prepareRecovery: return .init("deniedOperation")
         }
     }
-    public static func acceptsPeer(actualUID: UInt32, actualSession: Int32, currentUID: UInt32, currentSession: Int32) -> Bool {
-        currentUID > 0 && currentSession > 0 && actualUID == currentUID && actualSession == currentSession
+    public static func acceptsPeer(actualUID: UInt32, actualSession: Int32, expectedUID: UInt32, expectedSession: Int32) -> Bool {
+        expectedUID > 0 && expectedSession > 0 && actualUID == expectedUID && actualSession == expectedSession
     }
     public static func frame(for value: StatusLabCase) throws -> Data {
         let source = KnownSourceID(id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!, kind: .launchAgentConfiguration)

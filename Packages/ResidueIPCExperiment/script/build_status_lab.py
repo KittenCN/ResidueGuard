@@ -30,6 +30,8 @@ def seal(path, identifier):
         raise RuntimeError('missing code digest')
     return 'cdhash H"' + match.group(1) + '"'
 
+shutil.copy2(binpath / 'StatusSessionReader', lab / 'StatusSessionReader')
+seal(lab / 'StatusSessionReader', 'example.residueguard.status-wire.session-reader')
 manifest = {}
 for case in scenarios:
     app = lab / (case + '.app')
@@ -59,6 +61,7 @@ for name in ['run_status_vm_lab.sh', 'status_launch_case.sh']:
 copy = lab.with_name('status-wire-lab-' + str(uuid.uuid4()).upper())
 subprocess.run(['/usr/bin/ditto', str(lab), str(copy)], check=True)
 try:
+    subprocess.run(['/usr/bin/codesign', '--verify', '--strict', str(copy / 'StatusSessionReader')], check=True, capture_output=True)
     for app in copy.glob('*.app'):
         subprocess.run(['/usr/bin/codesign', '--verify', '--deep', '--strict', str(app)], check=True, capture_output=True)
 finally:

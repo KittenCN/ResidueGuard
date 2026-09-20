@@ -1,11 +1,13 @@
 #import "StatusWireBridge.h"
 #import <bsm/audit.h>
 #import <Security/Security.h>
-BOOL RGStatusCurrentAuditSession(int32_t *session) {
+int32_t RGStatusAuditSessionResult(int32_t *session) {
     auditinfo_addr_t info = {0};
-    if (getaudit_addr(&info, sizeof(info)) != 0 || info.ai_asid <= AU_DEFAUDITSID) return NO;
-    *session = info.ai_asid; return YES;
+    if (getaudit_addr(&info, sizeof(info)) != 0) return 1;
+    if (info.ai_asid <= AU_DEFAUDITSID) return 2;
+    *session = info.ai_asid; return 0;
 }
+BOOL RGStatusCurrentAuditSession(int32_t *session) { return RGStatusAuditSessionResult(session) == 0; }
 BOOL RGStatusConfigureRequirement(NSXPCConnection *connection, NSString *requirement) {
     SecRequirementRef compiled = NULL;
     if (SecRequirementCreateWithString((__bridge CFStringRef)requirement, kSecCSDefaultFlags, &compiled) != errSecSuccess) return NO;

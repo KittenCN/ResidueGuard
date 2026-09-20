@@ -32,5 +32,9 @@ run_status_case() {
         fi
         /bin/sleep 0.1
     done
-    echo "FAIL case=$scenario outputOrExitTimeout=true"; return 2
+    local absent=false mismatch=false owned=false
+    [ -n "$actual" ] || absent=true
+    if [ "$actual" != "$expected" ] && { [ -z "$alternate" ] || [ "$actual" != "$alternate" ]; }; then mismatch=true; fi
+    [ -z "$present" ] || owned=true
+    echo "FAIL case=$scenario outputOrExitTimeout=true outputAbsent=$absent outputMismatch=$mismatch ownedProcessPresent=$owned"; return 2
 }

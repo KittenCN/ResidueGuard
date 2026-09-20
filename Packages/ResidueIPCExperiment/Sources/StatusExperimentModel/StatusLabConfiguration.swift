@@ -4,6 +4,7 @@ import Darwin
 public struct StatusLabConfiguration {
     public let scenario: StatusLabCase
     public let peerRequirement: String
+    public let expectedCallerSession: Int32
     public static func load(server: Bool) throws -> StatusLabConfiguration {
         guard getuid() > 0, getuid() == geteuid(),
               let raw = Bundle.main.infoDictionary?["RGStatusCase"] as? String,
@@ -24,6 +25,16 @@ public struct StatusLabConfiguration {
               let manifest = try PropertyListSerialization.propertyList(from: data, format: nil) as? [String: [String: String]],
               let pin = manifest[scenario.rawValue]?[server ? "client" : "server"],
               pin.range(of: #"^cdhash H"[0-9a-f]{40}"$"#, options: .regularExpression) != nil else { throw CocoaError(.coderInvalidValue) }
-        return .init(scenario: scenario, peerRequirement: pin)
+        let sessionFD = open(root.appendingPathComponent("status-session.plist").path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
+        guard sessionFD >= 0 else { throw CocoaError(.fileReadNoSuchFile) }; defer { close(sessionFD) }
+        var sessionInfo = stat()
+        guard fstat(sessionFD, &sessionInfo) == 0, sessionInfo.st_mode & S_IFMT == S_IFREG,
+              sessionInfo.st_uid == getuid(), sessionInfo.st_mode & 0o7777 == 0o600,
+              sessionInfo.st_nlink == 1, sessionInfo.st_size > 0, sessionInfo.st_size <= 2048 else { throw CocoaError(.fileReadNoPermission) }
+        var sessionData = Data(count: Int(sessionInfo.st_size))
+        guard sessionData.withUnsafeMutableBytes({ pread(sessionFD, $0.baseAddress, $0.count, 0) }) == sessionData.count,
+              let sessionManifest = try PropertyListSerialization.propertyList(from: sessionData, format: nil) as? [String: String] else { throw CocoaError(.coderInvalidValue) }
+        let expectation = try StatusCallerSessionExpectation(manifest: sessionManifest, labUUID: token.uuidString)
+        return .init(scenario: scenario, peerRequirement: pin, expectedCallerSession: expectation.session)
     }
 }

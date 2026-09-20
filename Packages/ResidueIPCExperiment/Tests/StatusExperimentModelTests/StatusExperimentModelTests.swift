@@ -20,12 +20,12 @@ import Testing
     for number in 1...8 { #expect(StatusLabPolicy.evaluate(frame, messageNumber: number).outcome == "statusOnly") }
 }
 @Test func uidAndAuditSessionMustBothMatchAndBeAvailable() {
-    #expect(StatusLabPolicy.acceptsPeer(actualUID: 501, actualSession: 3, currentUID: 501, currentSession: 3))
-    #expect(!StatusLabPolicy.acceptsPeer(actualUID: 502, actualSession: 3, currentUID: 501, currentSession: 3))
-    #expect(!StatusLabPolicy.acceptsPeer(actualUID: 501, actualSession: 4, currentUID: 501, currentSession: 3))
-    #expect(!StatusLabPolicy.acceptsPeer(actualUID: 0, actualSession: 3, currentUID: 0, currentSession: 3))
-    #expect(!StatusLabPolicy.acceptsPeer(actualUID: 501, actualSession: 0, currentUID: 501, currentSession: 0))
-    #expect(!StatusLabPolicy.acceptsPeer(actualUID: 501, actualSession: -1, currentUID: 501, currentSession: -1))
+    #expect(StatusLabPolicy.acceptsPeer(actualUID: 501, actualSession: 3, expectedUID: 501, expectedSession: 3))
+    #expect(!StatusLabPolicy.acceptsPeer(actualUID: 502, actualSession: 3, expectedUID: 501, expectedSession: 3))
+    #expect(!StatusLabPolicy.acceptsPeer(actualUID: 501, actualSession: 4, expectedUID: 501, expectedSession: 3))
+    #expect(!StatusLabPolicy.acceptsPeer(actualUID: 0, actualSession: 3, expectedUID: 0, expectedSession: 3))
+    #expect(!StatusLabPolicy.acceptsPeer(actualUID: 501, actualSession: 0, expectedUID: 501, expectedSession: 0))
+    #expect(!StatusLabPolicy.acceptsPeer(actualUID: 501, actualSession: -1, expectedUID: 501, expectedSession: -1))
 }
 @Test func repliesAreSmallCanonicalAndNeverAuthority() throws {
     for outcome in ["statusOnly", "deniedOperation", "invalidFrame", "messageLimit", "peerRejected"] {
@@ -53,4 +53,41 @@ import Testing
     var invalidated = StatusLabMessageBudget()
     #expect(invalidated.next() == .allow(1)); invalidated.invalidate()
     #expect(invalidated.next() == .closed)
+}
+
+@Test func callerExpectationBindsExactLabAndPositiveCanonicalSession() throws {
+    let id = "164BDB58-15B7-4ED7-89AF-4CE39EC6C3B3"
+    let good = ["labUUID": id, "expectedCallerSession": "2147483647"]
+    #expect(try StatusCallerSessionExpectation(manifest: good, labUUID: id).session == Int32.max)
+    for invalid in ["", "0", "-1", "+1", "01", " 1", "1.0", "2147483648", "999999999999999"] {
+        #expect(throws: (any Error).self) {
+            try StatusCallerSessionExpectation(manifest: ["labUUID": id, "expectedCallerSession": invalid], labUUID: id)
+        }
+    }
+    #expect(throws: (any Error).self) { try StatusCallerSessionExpectation(manifest: good, labUUID: UUID().uuidString) }
+    #expect(throws: (any Error).self) { try StatusCallerSessionExpectation(manifest: good, labUUID: id.lowercased()) }
+    #expect(throws: (any Error).self) { try StatusCallerSessionExpectation(manifest: ["labUUID": id], labUUID: id) }
+    #expect(throws: (any Error).self) { try StatusCallerSessionExpectation(manifest: good.merging(["unknown": "x"], uniquingKeysWith: { a, _ in a }), labUUID: id) }
+}
+
+@Test func observedServerSessionIsConnectionLocalAndTerminal() {
+    var first = StatusObservedServerSession(), second = StatusObservedServerSession()
+    #expect({ first.accept(actualUID: 501, expectedUID: 501, session: 10) }())
+    #expect({ second.accept(actualUID: 501, expectedUID: 501, session: 11) }())
+    #expect({ first.accept(actualUID: 501, expectedUID: 501, session: 10) }())
+    #expect({ !first.accept(actualUID: 501, expectedUID: 501, session: 11) }())
+    #expect(first.terminal)
+    #expect({ !first.accept(actualUID: 501, expectedUID: 501, session: 10) }())
+    second.invalidate()
+    #expect({ !second.accept(actualUID: 501, expectedUID: 501, session: 11) }())
+    #expect(second.observed == 11)
+}
+
+@Test func unknownPeerCannotEstablishOrRelearnSession() {
+    for pair: (UInt32, Int32) in [(501, 0), (501, -1), (502, 4)] {
+        var binding = StatusObservedServerSession()
+        #expect({ !binding.accept(actualUID: pair.0, expectedUID: 501, session: pair.1) }())
+        #expect(binding.observed == nil)
+        #expect({ !binding.accept(actualUID: 501, expectedUID: 501, session: 4) }())
+    }
 }

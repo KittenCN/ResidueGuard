@@ -44,3 +44,5 @@ P4新增有界HelperRequest wire codec：16KiB/深度/字符串限制，严格�
 10,000条容量：新增定向GUI仅验收全量总数和末尾筛选，1项通过（18.358秒）；原完整XCTest受AX幻影Dialog阻断，失败记录保留。VM实际鼠标/键盘补验加载/筛选/清空/滚动/取消通过，未声称200ms或VoiceOver验收。最新Release双架构签名及8个Debug标记隔离检查通过。见[容量专项](large-scan-gui-fixture-2026-09-20.md)。
 
 精确服务错误文本新增只读诊断元数据；runtime仍unknown、coverage partial，不产生不存在证明。Platform最新49项通过，见[诊断反例](scoped-diagnostic-notfound-research-2026-09-20.md)。
+
+有界status-only XPC实验已修正GUI与服务审计会话的角色混淆；10项模型测试通过，真实VM17场景全部通过并逐个核验自有进程退出。保留v1/v2失败；外部manifest不是生产信任根，未安装helper或接执行器。见[会话与wire实验](status-wire-xpc-experiment-2026-09-20.md)。
