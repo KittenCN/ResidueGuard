@@ -4,8 +4,8 @@
 
 - 原生 SwiftUI App 支持显式目录只读扫描、合成演示、dry-run、脱敏报告、权限引导；新增历史审计报告只读导入页。
 - VM 中修复目录已授权但读取上级目录失败导致零行的问题：同一自有目录实际返回 1 条；目标未授权仍为无法核实，不误标红。
-- Core 59 项、Transactions 6 项通过：修复未验证注册状态仍可完成事务的错误，两层共用结果判断。见[修复证据](transaction-outcome-fix-2026-09-20.md)。
-- Platform 49 项、Persistence 41 项、Backup 54 项通过。日志含 18 个独立进程 SIGKILL 场景（含schema2审计写入与迁移）；VM 固定自有夹具的只读备份及精确 runtime 探针通过。
+- Core 60 项、Transactions 6 项通过：修复未验证注册状态仍可完成事务的错误，两层共用结果判断。见[修复证据](transaction-outcome-fix-2026-09-20.md)。
+- Platform 50 项、Persistence 41 项、Backup 54 项通过。日志含 18 个独立进程 SIGKILL 场景（含schema2审计写入与迁移）；VM 固定自有夹具的只读备份及精确 runtime 探针通过。
 - Quarantine 79 项、Recovery 10 项通过：临时夹具备份核验、同卷不覆盖隔离/恢复和只读恢复检查；审计模型保持内容完整性与来源真实性分离。没有生产构造入口。
 - AuditImport 15 项真实文件测试通过，App 已接入；其后 History UI 4 通过、1 系统 picker 跳过、0 失败。
 - GUI 最新全量结果：22 项中 21 通过、1 显式跳过、0 失败（273.497 秒）。跳过系统 picker 自动输入；随后另行在VM Release实际选择文件并导入显示成功，不能据此改写XCTest结果。新文件读取模块集成的验证见[导入报告](history-report-import-2026-09-20.md)。
@@ -46,3 +46,5 @@ P4新增有界HelperRequest wire codec：16KiB/深度/字符串限制，严格�
 精确服务错误文本新增只读诊断元数据；runtime仍unknown、coverage partial，不产生不存在证明。Platform最新49项通过，见[诊断反例](scoped-diagnostic-notfound-research-2026-09-20.md)。
 
 有界status-only XPC实验已修正GUI与服务审计会话的角色混淆；10项模型测试通过，真实VM17场景全部通过并逐个核验自有进程退出。保留v1/v2失败；外部manifest不是生产信任根，未安装helper或接执行器。见[会话与wire实验](status-wire-xpc-experiment-2026-09-20.md)。
+
+只读索引/候选图新增移动、同ID/同名不同签名提示和暂缺后恢复的边界补测：Core60、Platform50项通过，四阶段行存在性显式验证。只证明不变红/不产生执行能力，不是有效签名替代安装或真实updater全矩阵验收，见[误判边界](index-candidate-misclassification-matrix-2026-09-20.md)。

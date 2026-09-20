@@ -110,3 +110,16 @@ private func graph(_ records: [SourceRecord], _ applications: [OwnershipApplicat
     #expect(result.issues.contains { $0.kind == .insufficientCoverage })
     #expect(!result.ownershipVerified)
 }
+
+@Test func ownershipSameDisplayNameAndDifferentSignatureHintsNeverMergeInstallations() {
+    let first = installation("one", path: "/First/Same.app", team: "TEAM_A", signingIdentifier: "signed.a")
+    let second = installation("two", path: "/Second/Same.app", team: "TEAM_B", signingIdentifier: "signed.b")
+    let result = graph([source()], [first, second])
+    #expect(result.applications.count == 2 && result.edges.count == 2)
+    #expect(result.edges.allSatisfy { $0.reasons == [.declaredBundleIdentifier] })
+    #expect(result.issues.contains { $0.kind == .duplicateBundleIdentifier })
+    #expect(result.issues.contains { $0.kind == .differingIdentityHints })
+    #expect(!result.ownershipVerified)
+    // A name or signing hint alone cannot select either installation.
+    #expect(graph([source(ids: [])], [first, second]).edges.isEmpty)
+}
