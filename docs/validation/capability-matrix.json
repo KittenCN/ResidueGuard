@@ -36,7 +36,8 @@
     "environment.md",
     "provider-dossier.md",
     "p2-results-2026-09-20.md",
-    "vm-continuation-2026-09-20.md"
+    "vm-continuation-2026-09-20.md",
+    "vm-system-results-2026-09-20.md"
   ],
   "providers": [
     {
@@ -312,49 +313,49 @@
       "id": "ISO-01",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
+      "reason": "Happy-path subset passed on 26A428 in VM; full conflict/failure/security matrix notRun. Product mutations remain disabled."
     },
     {
       "id": "ISO-02",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
+      "reason": "Rollback clone boot verified in VM; this complete experiment remains notRun. See vm-system-results-2026-09-20.md for narrow subcase evidence."
     },
     {
       "id": "ISO-03",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
+      "reason": "Rollback clone boot verified in VM; this complete experiment remains notRun. See vm-system-results-2026-09-20.md for narrow subcase evidence."
     },
     {
       "id": "ISO-04",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
+      "reason": "Happy-path subset passed on 26A428 in VM; full conflict/failure/security matrix notRun. Product mutations remain disabled."
     },
     {
       "id": "ISO-05",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
+      "reason": "Rollback clone boot verified in VM; this complete experiment remains notRun. See vm-system-results-2026-09-20.md for narrow subcase evidence."
     },
     {
       "id": "ISO-06",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
+      "reason": "Rollback clone boot verified in VM; this complete experiment remains notRun. See vm-system-results-2026-09-20.md for narrow subcase evidence."
     },
     {
       "id": "ISO-07",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
+      "reason": "Rollback clone boot verified in VM; this complete experiment remains notRun. See vm-system-results-2026-09-20.md for narrow subcase evidence."
     },
     {
       "id": "ISO-08",
       "result": "notRun",
       "mutationEnabled": false,
-      "reason": "VM identified and powered-off rollback copy created; guest login and isolated execution remain pending."
+      "reason": "Rollback clone boot verified in VM; this complete experiment remains notRun. See vm-system-results-2026-09-20.md for narrow subcase evidence."
     }
   ]
 }
