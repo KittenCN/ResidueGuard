@@ -35,8 +35,10 @@ extension QuarantineStore {
             sourcePath: context.home + "/Library/LaunchAgents/" + context.sourceName,
             program: context.home + "/Library/ResidueGuard-VM-ISO01/fixture")
         let collector = LaunchRuntimeCollector(configuration: .exactCurrentUserService(profile: LaunchRuntimeParser.profile))
+        var latestRuntimeObservation: LaunchRuntimeObservation?
         let check = {
             let observation = await collector.collect(expected: expected, generation: UUID().uuidString)
+            latestRuntimeObservation = observation
             return observation.state == .registeredNotRunning
         }
         guard await check() else {
@@ -83,7 +85,8 @@ extension QuarantineStore {
                 } else { identity = nil }
                 let effects = OwnedFixtureExperimentEffects(file: auditEffect(state),
                     runtime: known ? .observedRegisteredNotRunning : .unknown,
-                    quarantineObject: restoring ? nil : identity, sourceObject: restoring ? identity : nil)
+                    quarantineObject: restoring ? nil : identity, sourceObject: restoring ? identity : nil,
+                    runtimeEvidence: identity == nil ? nil : try latestRuntimeObservation.map(auditRuntime))
                 try await journal.recordResult(planID: receipt.planID, phase: restoring ? .restoration : .isolation, effects: effects)
             })
         let reopened = try OwnedFixtureExperimentJournal(directoryFD: context.labFD, readOnly: true)
@@ -91,7 +94,7 @@ extension QuarantineStore {
         guard entries.count == 1, entries[0].plan.id == receipt.planID,
               entries[0].steps.count == 2,
               entries[0].steps.last?.effects?.file == .restoredVerified,
-              entries[0].steps.allSatisfy({ !$0.actionOutcomeUnknown }) else {
+              entries[0].steps.allSatisfy({ !$0.actionOutcomeUnknown && $0.effects?.runtimeEvidence != nil }) else {
             throw OwnedFixtureProbeFailure(phase: .journalAfterRestore, fileState: .restoredVerified, backupID: receipt.id)
         }
         do {
@@ -103,9 +106,22 @@ extension QuarantineStore {
         } catch {
             throw OwnedFixtureProbeFailure(phase: .backupEvidenceAfterRestore, fileState: .restoredVerified, backupID: receipt.id, reason: probeReason(error))
         }
-        return "PASS ISO01 backup/isolate/inspect/restore verified; backupAuditEvidence=verifiedBeforeAndAfter; persistentAudit=preparedRecordedAndReopened; runtime=registeredNotRunning; registration=observedRegisteredNotRunning; registrationMutations=none; productionGate=disabled; backupID=\(receipt.id.uuidString)"
+        return "PASS ISO01 backup/isolate/inspect/restore verified; backupAuditEvidence=verifiedBeforeAndAfter; persistentAudit=preparedRecordedAndReopened; runtimeEvidence=recordedBothSteps; runtime=registeredNotRunning; registration=observedRegisteredNotRunning; registrationMutations=none; productionGate=disabled; backupID=\(receipt.id.uuidString)"
     }
 
+    static func auditRuntime(_ value: LaunchRuntimeObservation) throws -> OwnedFixtureRuntimeEvidence {
+        let source = value.provenance, fields = source.rawMetadata
+        guard source.generation == value.coverage.generation,
+              let profile = fields["parserProfile"], let build = fields["osBuild"],
+              let digest = fields["stdoutSHA256"], let failure = fields["captureFailure"],
+              let truncated = fields["outputTruncated"], ["true", "false"].contains(truncated) else {
+            throw BackupFailure.changed
+        }
+        return .init(generation: source.generation, providerID: source.id.providerID, scope: source.id.scope,
+            nativeLabel: source.id.nativeIdentity, osBuild: build, parserProfile: profile, observedAt: source.observedAt,
+            stdoutSHA256: digest, exitCode: fields["exitCode"].flatMap(Int32.init), captureFailure: failure,
+            outputTruncated: truncated == "true", coverage: value.coverage.state.rawValue, state: value.state.rawValue)
+    }
     private static func auditDirectory(_ fd: Int32) throws -> OwnedFixtureObjectIdentity {
         var value = stat()
         guard fstat(fd, &value) == 0, value.st_mode & S_IFMT == S_IFDIR else { throw BackupFailure.unsafeFile }

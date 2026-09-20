@@ -17,6 +17,6 @@ let package = Package(
         .executableTarget(name: "ResidueOwnedFixtureVMProbe", dependencies: ["ResidueQuarantine", "ResidueBackup"]),
         .executableTarget(name: "ResidueOwnedFixtureAuditProbe", dependencies: ["ResidueQuarantine", "ResidueBackup"]),
         .testTarget(name: "ResidueBackupTests", dependencies: ["ResidueBackup"]),
-        .testTarget(name: "ResidueQuarantineTests", dependencies: ["ResidueQuarantine", "ResidueBackup", "ResiduePersistence"])
+        .testTarget(name: "ResidueQuarantineTests", dependencies: ["ResidueQuarantine", "ResidueBackup", "ResiduePersistence", "ResiduePlatform"])
     ], swiftLanguageModes: [.v6]
 )

@@ -81,3 +81,21 @@ hot journal字节未改变，再以writer连接执行SQLite回滚恢复，验证
 完成上述通过结果。未以跳过掩盖失败。
 
 最终Release package build通过（6.03秒）；DEBUG crash checkpoint不进入Release。
+
+## 后续：有界 runtime 历史 provenance
+
+新增可选 `OwnedFixtureExperimentEffects.runtimeEvidence`，记录 generation UUID、
+providerID、scope、Label、OS build、parser profile、观察时间、stdout SHA256、
+exit code、capture failure、outputTruncated、coverage 和 state；不存原始输出或路径。
+有证据的 observedRegisteredNotRunning 必须绑定固定 ISO01 Label/当前计划UID、
+26A428/profile、exit0/none/未截断/completeWithinDeclaredScope/registeredNotRunning。
+观察须位于该步骤prepare与result时间之间，并距result不超过120秒；历史读取不与
+现在比较。unknown效果仍可保留有界失败/运行观察，永不因此升级或允许后续复原。
+
+旧envelope省略runtimeEvidence字段仍可按原canonical字节读取，nil只代表旧typed结论
+没有完整provenance；不补写、推断或伪造缺失证据，不改变schema/nonce。上述早期
+runtime仅typed限制现在准确适用于nil记录；新有证据记录也只是历史观察而非认证。
+
+实际回归：同一固定Xcode命令 **41 tests通过，0失败/跳过，0.456秒**，仍包含18个
+独立进程crash cases。新增4项测试：完整往返及旧缺失兼容；15个known字段/时间
+不一致拒绝；unknown超时/截断证据留存且不升级；unknown证据的3种未知枚举和超长profile拒绝。Release build再次通过（6.71秒）。GUI/Probe桥接不属于本包测试结果。

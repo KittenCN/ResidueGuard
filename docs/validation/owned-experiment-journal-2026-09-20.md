@@ -19,10 +19,18 @@
 
 ## 限制
 
-往返探针的第二连接读回发生在同一进程。随后独立启动的只读审计探针也已实测exit0，读取1条实验/2个步骤，源matchesHistory、隔离absent；5个早期实验目录没有journal，明确计数，失败/拒绝根为0。这证明跨进程历史及当前文件观察，不等于重启后恢复执行。runtime日志目前只有结论，完整来源/采集代次尚待接入。源检查与rename间竞争仍存在，固定自有夹具实验不能推广为第三方清理安全。实验结果观察不签名，不把可改写历史当新的执行凭据。root helper、系统级来源修改及生产GUI写入均未启用。
+往返探针的第二连接读回发生在同一进程。随后独立启动的只读审计探针也已实测exit0，读取1条实验/2个步骤，源matchesHistory、隔离absent；5个早期实验目录没有journal，明确计数，失败/拒绝根为0。这证明跨进程历史及当前文件观察，不等于重启后恢复执行。后续新实验日志已增加有界runtime来源字段，旧日志继续明确缺失（见下）。源检查与rename间竞争仍存在，固定自有夹具实验不能推广为第三方清理安全。实验结果观察不签名，不把可改写历史当新的执行凭据。root helper、系统级来源修改及生产GUI写入均未启用。
 
 最终Backup54、Quarantine51项通过（真实文件加journal集成7项包含在后者）；Persistence37项通过，含18个真实进程SIGKILL场景。
 
 审查修复：持久prepare后重新观察运行态，再同步核验程序身份、期限与取消，最后进入文件操作；不再在最后程序核验后await。新鲜身份/运行态失败归beforeIsolation/Restore，日志写入失败保留独立阶段。prepare后明确未执行但停止时仍保留pending，这是保守结果未知，不伪装已完成或自动重试。
 
 客体终端最初两次命令输入被终端解析成ash/ubash并报command not found，未执行探针。之后完整命令实际成功；没有把输入尝试计为验收。
+
+## 后续：运行态来源绑定
+
+新增可选历史runtimeEvidence，保存UUID代次、provider/scope/Label、build/parserProfile、观察时间、stdout摘要、退出/失败/截断与coverage/state。不存原始输出。已知registeredNotRunning必须符合固定身份和成功完整采集；unknown失败保留，不能放行。记录时间只与对应prepare/result比较，不把旧历史看成当前观察；旧缺失字段保持nil与原canonical读兼容。
+
+Platform47项、Persistence41项（18个进程崩溃场景）、Backup54项、Quarantine53项通过；新增bridge2项检验成功与失败/截断信息保真。bridge测试初次编译因跨模块internal诊断fixture构造不可访问而失败，改测试专用@testable导入后通过，没有放宽public API。
+
+Release重新构建后VM v8实际退出0，两步runtimeEvidence均已记录。随后独立reader v2退出0，读取3条实验共6步；两条旧记录的runtimeEvidenceSteps为0，新记录为2，三个源matchesHistory、隔离absent。5个无journal早期目录仍单独计数，失败/拒绝根为0。reader明确runtimeInspected=false，表示它没有重新观察运行态，历史字段不能替代当前状态。

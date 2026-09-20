@@ -183,3 +183,78 @@ func ownedExperimentStorageLinksAndUnsafeRootReject(kind: String) async throws {
     try await journal.recordResult(planID: f.plan.id, phase: .isolation, effects: .init(file: .movedUnverified, runtime: .unknown, quarantineObject: swapped), at: f.date)
     #expect(try await journal.entries()[0].steps[0].effects?.quarantineObject?.inode == 999)
 }
+
+private func runtimeEvidence(_ f: ExperimentFixture) -> OwnedFixtureRuntimeEvidence {
+    .init(generation: UUID().uuidString, providerID: "launchd.runtime", scope: "gui/\(geteuid())", nativeLabel: f.plan.label,
+        osBuild: "26A428", parserProfile: "launchctl-print-gui-26A428-v1", observedAt: f.date,
+        stdoutSHA256: String(repeating: "e", count: 64), exitCode: 0, captureFailure: "none", outputTruncated: false,
+        coverage: "completeWithinDeclaredScope", state: "registeredNotRunning")
+}
+@Test func ownedRuntimeProvenanceRoundTripsAndLegacyMissingEvidenceStaysMissing() async throws {
+    let f = try ExperimentFixture(); defer { f.cleanup() }
+    let journal = try f.open(true); try await journal.create(plan: f.plan)
+    try await journal.prepare(planID: f.plan.id, phase: .isolation, backup: f.backup, at: f.date)
+    let evidence = runtimeEvidence(f)
+    try await journal.recordResult(planID: f.plan.id, phase: .isolation,
+        effects: .init(file: .quarantinedVerified, runtime: .observedRegisteredNotRunning, quarantineObject: f.plan.source, runtimeEvidence: evidence), at: f.date)
+    let readonly = try OwnedFixtureExperimentJournal(directoryFD: f.fd, readOnly: true)
+    #expect(try await readonly.entries()[0].steps[0].effects?.runtimeEvidence == evidence)
+    // Pre-extension synthesized encoding omitted this optional key; no null/key insertion migration.
+    let old = OwnedFixtureExperimentEffects(file: .notMoved, runtime: .unknown)
+    let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+    let oldBytes = try encoder.encode(old)
+    #expect(!String(decoding: oldBytes, as: UTF8.self).contains("runtimeEvidence"))
+    #expect(try JSONDecoder().decode(OwnedFixtureExperimentEffects.self, from: oldBytes).runtimeEvidence == nil)
+    // Existing nil-evidence journal fixtures elsewhere in this suite still reopen canonically.
+}
+@Test(arguments: ["generation", "providerID", "scope", "nativeLabel", "osBuild", "parserProfile", "stdoutSHA256", "exitCode", "captureFailure", "outputTruncated", "coverage", "state", "beforePrepare", "afterResult", "stale"])
+func ownedRuntimeProvenanceRejectsInvalidKnownObservation(field: String) async throws {
+    let f = try ExperimentFixture(); defer { f.cleanup() }
+    let journal = try f.open(true); try await journal.create(plan: f.plan)
+    try await journal.prepare(planID: f.plan.id, phase: .isolation, backup: f.backup, at: f.date)
+    var value = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(runtimeEvidence(f))) as? [String: Any])
+    var recordedAt = f.date
+    switch field {
+    case "exitCode": value[field] = 1
+    case "outputTruncated": value[field] = true
+    case "captureFailure": value[field] = "timedOut"
+    case "coverage": value[field] = "partial"
+    case "state": value[field] = "running"
+    case "beforePrepare": value["observedAt"] = f.date.addingTimeInterval(-1).timeIntervalSinceReferenceDate
+    case "afterResult": value["observedAt"] = f.date.addingTimeInterval(1).timeIntervalSinceReferenceDate
+    case "stale": recordedAt = f.date.addingTimeInterval(121)
+    default: value[field] = "wrong"
+    }
+    let invalid = try JSONDecoder().decode(OwnedFixtureRuntimeEvidence.self, from: JSONSerialization.data(withJSONObject: value))
+    let resultDate = recordedAt
+    await #expect(throws: JournalError.invalidInput) {
+        try await journal.recordResult(planID: f.plan.id, phase: .isolation,
+            effects: .init(file: .quarantinedVerified, runtime: .observedRegisteredNotRunning, quarantineObject: f.plan.source, runtimeEvidence: invalid), at: resultDate)
+    }
+    #expect(try await journal.entries()[0].steps[0].actionOutcomeUnknown)
+}
+@Test func ownedRuntimeUnknownEvidencePreservesFailureWithoutPromotingIt() async throws {
+    let f = try ExperimentFixture(); defer { f.cleanup() }
+    let journal = try f.open(true); try await journal.create(plan: f.plan)
+    try await journal.prepare(planID: f.plan.id, phase: .isolation, backup: f.backup, at: f.date)
+    let failure = OwnedFixtureRuntimeEvidence(generation: UUID().uuidString, providerID: "launchd.runtime", scope: "gui/\(geteuid())", nativeLabel: f.plan.label,
+        osBuild: "26A428", parserProfile: "launchctl-print-gui-26A428-v1", observedAt: f.date, stdoutSHA256: String(repeating: "f", count: 64),
+        exitCode: nil, captureFailure: "timedOut", outputTruncated: true, coverage: "partial", state: "unknown")
+    try await journal.recordResult(planID: f.plan.id, phase: .isolation,
+        effects: .init(file: .quarantinedVerified, runtime: .unknown, quarantineObject: f.plan.source, runtimeEvidence: failure), at: f.date)
+    let restored = try await f.open().entries()[0].steps[0].effects
+    #expect(restored?.runtime == .unknown && restored?.runtimeEvidence == failure)
+    await #expect(throws: JournalError.invalidTransition) { try await journal.prepare(planID: f.plan.id, phase: .restoration, backup: f.backup, at: f.date) }
+}
+
+@Test(arguments: ["captureFailure", "coverage", "state", "oversizeProfile"])
+func ownedRuntimeUnknownEvidenceRejectsUnboundedOrUnknownEnums(field: String) async throws {
+    let f = try ExperimentFixture(); defer { f.cleanup() }
+    let journal = try f.open(true); try await journal.create(plan: f.plan)
+    try await journal.prepare(planID: f.plan.id, phase: .isolation, backup: f.backup, at: f.date)
+    var value = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(runtimeEvidence(f))) as? [String: Any])
+    value[field == "oversizeProfile" ? "parserProfile" : field] = field == "oversizeProfile" ? String(repeating: "a", count: 129) : "unknown-new-enum"
+    let evidence = try JSONDecoder().decode(OwnedFixtureRuntimeEvidence.self, from: JSONSerialization.data(withJSONObject: value))
+    await #expect(throws: JournalError.invalidInput) { try await journal.recordResult(planID: f.plan.id, phase: .isolation, effects: .init(file: .notMoved, runtime: .unknown, runtimeEvidence: evidence), at: f.date) }
+    #expect(try await journal.entries()[0].steps[0].actionOutcomeUnknown)
+}

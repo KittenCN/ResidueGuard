@@ -132,6 +132,27 @@ public actor OwnedFixtureExperimentJournal {
             if let effects = step.effects, let date = step.recordedAt {
                 guard date.timeIntervalSince1970.isFinite, date >= step.preparedAt,
                       effects.sourceObject.map(file) ?? true, effects.quarantineObject.map(file) ?? true else { throw JournalError.invalidInput }
+                if let runtime = effects.runtimeEvidence {
+                    let failures = ["none", "invalidRequest", "launchFailed", "timedOut", "cancelled", "outputLimit", "ioFailure"]
+                    let coverage = ["completeWithinDeclaredScope", "partial", "permissionDenied", "unsupported", "failed", "cancelled"]
+                    func token(_ value: String) -> Bool {
+                        !value.isEmpty && value.utf8.count <= 128 && value.utf8.allSatisfy {
+                            (48...57).contains($0) || (65...90).contains($0) || (97...122).contains($0) || [45, 46, 95].contains($0)
+                        }
+                    }
+                    guard runtime.generation.utf8.count == 36, UUID(uuidString: runtime.generation) != nil,
+                          runtime.providerID == "launchd.runtime", runtime.scope == "gui/\(p.userID)", runtime.nativeLabel == p.label,
+                          token(runtime.osBuild), token(runtime.parserProfile), digest(runtime.stdoutSHA256),
+                          failures.contains(runtime.captureFailure), coverage.contains(runtime.coverage),
+                          ["running", "registeredNotRunning", "unknown"].contains(runtime.state),
+                          runtime.observedAt.timeIntervalSince1970.isFinite, runtime.observedAt >= step.preparedAt,
+                          runtime.observedAt <= date, date.timeIntervalSince(runtime.observedAt) <= 120 else { throw JournalError.invalidInput }
+                    if effects.runtime == .observedRegisteredNotRunning {
+                        guard runtime.osBuild == p.osBuild, runtime.parserProfile == "launchctl-print-gui-26A428-v1",
+                              runtime.exitCode == 0, runtime.captureFailure == "none", !runtime.outputTruncated,
+                              runtime.coverage == "completeWithinDeclaredScope", runtime.state == "registeredNotRunning" else { throw JournalError.invalidInput }
+                    }
+                }
                 guard step.phase == .isolation ? effects.file != .restoredVerified : effects.file != .quarantinedVerified else { throw JournalError.invalidInput }
                 func matchesSource(_ observed: OwnedFixtureFileIdentity?) -> Bool {
                     guard let observed else { return false }

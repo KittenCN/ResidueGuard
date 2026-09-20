@@ -7,6 +7,7 @@ public struct OwnedFixtureAuditSummary: Encodable, Sendable {
     public let planID: UUID
     public let pendingStep: Bool
     public let recordedSteps: Int
+    public let runtimeEvidenceSteps: Int
     public let source: String
     public let quarantined: String
     public let authorizesMutation = false
@@ -87,7 +88,8 @@ extension QuarantineStore {
                 privateDirectory: true, expected: entry.plan.source)
         } else { isolatedState = "notRecorded" }
         return .init(planID: entry.plan.id, pendingStep: entry.steps.contains(where: \.actionOutcomeUnknown),
-            recordedSteps: entry.steps.filter { $0.effects != nil }.count, source: sourceState, quarantined: isolatedState)
+            recordedSteps: entry.steps.filter { $0.effects != nil }.count,
+            runtimeEvidenceSteps: entry.steps.filter { $0.effects?.runtimeEvidence != nil }.count, source: sourceState, quarantined: isolatedState)
     }
     private static func historicalObject(directoryFD: Int32, name: String, privateDirectory: Bool,
                                          expected: OwnedFixtureFileIdentity) -> String {

@@ -30,6 +30,37 @@ private func observe(_ text: String, build: String = "26A428", major: Int = 27, 
     #expect(observe(runtimeFixtureRunning, failure: .timedOut).state == .unknown)
     #expect(observe(runtimeFixtureRunning, truncated: true).state == .unknown)
 }
+
+@Test func runtimeCaptureProvenanceSurvivesUnknownState() {
+    let complete = observe(runtimeFixtureRunning)
+    #expect(complete.provenance.rawMetadata["outputTruncated"] == "false")
+    #expect(complete.provenance.rawMetadata["captureFailure"] == "none")
+    #expect(complete.provenance.rawMetadata["exitCode"] == "0")
+    for (failure, code, truncated) in [
+        (DiagnosticFailure.outputLimit, Int32(15), true),
+        (.timedOut, 15, false),
+        (.cancelled, 9, true)
+    ] {
+        let result = observe(runtimeFixtureRunning, exit: code, failure: failure, truncated: truncated)
+        let metadata = result.provenance.rawMetadata
+        #expect(result.state == .unknown && result.provenance.targetReferences.isEmpty)
+        #expect(metadata["runtimeState"] == "unknown")
+        #expect(metadata["captureFailure"] == failure.rawValue)
+        #expect(metadata["exitCode"] == String(code))
+        #expect(metadata["outputTruncated"] == String(truncated))
+        #expect(metadata["stdoutSHA256"] == complete.provenance.rawMetadata["stdoutSHA256"])
+        #expect(metadata["parserProfile"] == LaunchRuntimeParser.profile)
+    }
+    let truncatedOnly = observe(runtimeFixtureRunning, truncated: true)
+    #expect(truncatedOnly.state == .unknown)
+    #expect(truncatedOnly.provenance.rawMetadata["outputTruncated"] == "true")
+    #expect(truncatedOnly.provenance.rawMetadata["captureFailure"] == "none")
+    let unsupported = observe("unknown output", build: "future", exit: nil, truncated: true)
+    #expect(unsupported.coverage.state == .unsupported)
+    #expect(unsupported.provenance.rawMetadata["outputTruncated"] == "true")
+    #expect(unsupported.provenance.rawMetadata["exitCode"] == "unavailable")
+    #expect(unsupported.provenance.rawMetadata["runtimeState"] == "unknown")
+}
 @Test func runtimeRejectsConflictingIdentityAndMalformedStructure() {
     let mutations = [
         runtimeFixtureRunning.replacingOccurrences(of: "gui/501", with: "gui/502"),

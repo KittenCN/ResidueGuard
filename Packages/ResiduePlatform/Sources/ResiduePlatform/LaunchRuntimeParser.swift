@@ -67,6 +67,7 @@ public struct LaunchRuntimeParser: Sendable {
                                       sourceArtifact: "/bin/launchctl print \(expected.target)", displayName: expected.label,
                                       declaredAppIDs: [], targetReferences: known ? [expected.sourcePath, expected.program] : [],
                                       rawMetadata: ["stdoutSHA256": digest, "parserProfile": profile, "osBuild": osBuild,
+                                                    "outputTruncated": String(result.outputTruncated),
                                                     "runtimeState": state.rawValue, "captureFailure": result.failure?.rawValue ?? "none", "exitCode": result.exitCode.map(String.init) ?? "unavailable"],
                                       parseWarnings: known ? [] : [reason])
         return .init(state: state, coverage: coverage, provenance: provenance)

@@ -84,10 +84,11 @@ public struct OwnedFixtureExperimentEffects: Codable, Equatable, Sendable {
     public let runtime: OwnedFixtureRuntimeEffect
     public let quarantineObject: OwnedFixtureFileIdentity?
     public let sourceObject: OwnedFixtureFileIdentity?
+    public let runtimeEvidence: OwnedFixtureRuntimeEvidence?
     public var registration: String { "noMutation" }
     public var permission: String { "noMutation" }
-    public init(file: OwnedFixtureFileEffect, runtime: OwnedFixtureRuntimeEffect, quarantineObject: OwnedFixtureFileIdentity? = nil, sourceObject: OwnedFixtureFileIdentity? = nil) {
-        self.file = file; self.runtime = runtime; self.quarantineObject = quarantineObject; self.sourceObject = sourceObject
+    public init(file: OwnedFixtureFileEffect, runtime: OwnedFixtureRuntimeEffect, quarantineObject: OwnedFixtureFileIdentity? = nil, sourceObject: OwnedFixtureFileIdentity? = nil, runtimeEvidence: OwnedFixtureRuntimeEvidence? = nil) {
+        self.file = file; self.runtime = runtime; self.quarantineObject = quarantineObject; self.sourceObject = sourceObject; self.runtimeEvidence = runtimeEvidence
     }
 }
 public struct OwnedFixtureExperimentStep: Codable, Equatable, Sendable {
@@ -102,4 +103,30 @@ public struct OwnedFixtureExperimentEntry: Codable, Equatable, Sendable {
     public let plan: OwnedFixtureExperimentPlan
     public internal(set) var steps: [OwnedFixtureExperimentStep]
     public var authorizesMutation: Bool { false }
+}
+
+/// Historical redacted collector provenance. No raw command output or filesystem paths.
+/// This does not authenticate the observation or establish current runtime state.
+public struct OwnedFixtureRuntimeEvidence: Codable, Equatable, Sendable {
+    public let generation: String
+    public let providerID: String
+    public let scope: String
+    public let nativeLabel: String
+    public let osBuild: String
+    public let parserProfile: String
+    public let observedAt: Date
+    public let stdoutSHA256: String
+    public let exitCode: Int32?
+    public let captureFailure: String
+    public let outputTruncated: Bool
+    public let coverage: String
+    public let state: String
+    public init(generation: String, providerID: String, scope: String, nativeLabel: String,
+                osBuild: String, parserProfile: String, observedAt: Date, stdoutSHA256: String,
+                exitCode: Int32?, captureFailure: String, outputTruncated: Bool, coverage: String, state: String) {
+        self.generation = generation; self.providerID = providerID; self.scope = scope; self.nativeLabel = nativeLabel
+        self.osBuild = osBuild; self.parserProfile = parserProfile; self.observedAt = observedAt; self.stdoutSHA256 = stdoutSHA256
+        self.exitCode = exitCode; self.captureFailure = captureFailure; self.outputTruncated = outputTruncated
+        self.coverage = coverage; self.state = state
+    }
 }
