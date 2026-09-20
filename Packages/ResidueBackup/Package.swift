@@ -6,15 +6,17 @@ let package = Package(
         .library(name: "ResidueBackup", targets: ["ResidueBackup"]),
         .library(name: "ResidueQuarantine", targets: ["ResidueQuarantine"]),
         .executable(name: "ResidueBackupVMProbe", targets: ["ResidueBackupVMProbe"]),
-        .executable(name: "ResidueOwnedFixtureVMProbe", targets: ["ResidueOwnedFixtureVMProbe"])
+        .executable(name: "ResidueOwnedFixtureVMProbe", targets: ["ResidueOwnedFixtureVMProbe"]),
+        .executable(name: "ResidueOwnedFixtureAuditProbe", targets: ["ResidueOwnedFixtureAuditProbe"])
     ],
-    dependencies: [.package(path: "../ResiduePlatform")],
+    dependencies: [.package(path: "../ResiduePlatform"), .package(path: "../ResiduePersistence")],
     targets: [
         .target(name: "ResidueBackup"),
-        .target(name: "ResidueQuarantine", dependencies: ["ResidueBackup", "ResiduePlatform"]),
+        .target(name: "ResidueQuarantine", dependencies: ["ResidueBackup", "ResiduePlatform", "ResiduePersistence"]),
         .executableTarget(name: "ResidueBackupVMProbe", dependencies: ["ResidueBackup"]),
         .executableTarget(name: "ResidueOwnedFixtureVMProbe", dependencies: ["ResidueQuarantine", "ResidueBackup"]),
+        .executableTarget(name: "ResidueOwnedFixtureAuditProbe", dependencies: ["ResidueQuarantine", "ResidueBackup"]),
         .testTarget(name: "ResidueBackupTests", dependencies: ["ResidueBackup"]),
-        .testTarget(name: "ResidueQuarantineTests", dependencies: ["ResidueQuarantine", "ResidueBackup"])
+        .testTarget(name: "ResidueQuarantineTests", dependencies: ["ResidueQuarantine", "ResidueBackup", "ResiduePersistence"])
     ], swiftLanguageModes: [.v6]
 )

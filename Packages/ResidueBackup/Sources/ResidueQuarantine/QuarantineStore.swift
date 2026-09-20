@@ -136,6 +136,27 @@ public final class QuarantineStore {
         var result = stat()
         return fstatat(directory, name, &result, AT_SYMLINK_NOFOLLOW) == -1 && errno == ENOENT
     }
+    /// Internal read-only experiment seam. A missing object is distinct from an unsafe read.
+    static func inspectAuditFile(directoryFD: Int32, name: String, privateDirectory: Bool) throws -> Snapshot? {
+        guard validName(name) else { throw CheckFailure.unsafe }
+        _ = try directory(directoryFD, privateRequired: privateDirectory)
+        var info = stat()
+        if fstatat(directoryFD, name, &info, AT_SYMLINK_NOFOLLOW) != 0 {
+            guard errno == ENOENT else { throw CheckFailure.unsafe }
+            return nil
+        }
+        return try snapshot(directory: directoryFD, name: name)
+    }
+    /// Fresh internal observation for the experiment journal; never mutation authority.
+    func observeAuditObject(restored: Bool, receipt: BackupReceipt) throws -> Snapshot {
+        _ = try Self.directory(source, privateRequired: false)
+        _ = try Self.directory(quarantine, privateRequired: true)
+        try backup.verify(receipt)
+        let result = try Self.snapshot(directory: restored ? source : quarantine,
+            name: restored ? receipt.sourceName : receipt.id.uuidString + ".plist")
+        guard result.matches(receipt.fingerprint, allowChangedTime: true) else { throw CheckFailure.mismatch }
+        return result
+    }
     private static func directory(_ fd: Int32, privateRequired: Bool) throws -> stat {
         var info = stat()
         guard fstat(fd, &info) == 0, info.st_mode & S_IFMT == S_IFDIR,
@@ -152,7 +173,7 @@ public final class QuarantineStore {
         var entry: acl_entry_t?
         guard acl_get_entry(acl, Int32(ACL_FIRST_ENTRY.rawValue), &entry) == -1, errno == EINVAL else { throw CheckFailure.unsafe }
     }
-    private struct Snapshot {
+    struct Snapshot {
         let info: stat
         let hash: String
         let attributes: [String: Data]

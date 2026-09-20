@@ -127,4 +127,91 @@ final class OwnedFixtureScenarioTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: isolated.path))
     } }
 
+    func testDurablePrepareFailurePreventsSourceMutation() async throws { try await fixture { store, receipt, original, isolated in
+        do {
+            try await QuarantineStore.runOwnedFixtureScenario(store: store, receipt: receipt, runtimeCheck: { true },
+                prepareAction: { _ in throw CocoaError(.fileWriteUnknown) })
+            XCTFail("prepare failure must stop")
+        } catch let error as OwnedFixtureProbeFailure {
+            XCTAssertEqual(error.phase, .journalBeforeIsolation)
+            XCTAssertEqual(error.fileState, .notMoved)
+        }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: original.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: isolated.path))
+    } }
+    func testResultWriteFailureNeverCompensatesOrRestores() async throws { try await fixture { store, receipt, original, isolated in
+        do {
+            try await QuarantineStore.runOwnedFixtureScenario(store: store, receipt: receipt, runtimeCheck: { true },
+                recordAction: { restoring, state, known in
+                    XCTAssertFalse(restoring); XCTAssertEqual(state, .quarantinedVerified); XCTAssertTrue(known)
+                    throw CocoaError(.fileWriteUnknown)
+                })
+            XCTFail("result failure must stop")
+        } catch let error as OwnedFixtureProbeFailure {
+            XCTAssertEqual(error.phase, .journalAfterIsolation)
+            XCTAssertEqual(error.fileState, .quarantinedVerified)
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: original.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: isolated.path))
+    } }
+    func testAuditOrderSurroundsActualMoves() async throws { try await fixture { store, receipt, original, isolated in
+        var events: [String] = []
+        try await QuarantineStore.runOwnedFixtureScenario(store: store, receipt: receipt, runtimeCheck: { true },
+            prepareAction: { restoring in
+                events.append(restoring ? "prepareRestore" : "prepareIsolate")
+                XCTAssertEqual(FileManager.default.fileExists(atPath: original.path), !restoring)
+                XCTAssertEqual(FileManager.default.fileExists(atPath: isolated.path), restoring)
+            }, recordAction: { restoring, state, known in
+                events.append(restoring ? "resultRestore" : "resultIsolate")
+                XCTAssertTrue(known)
+                XCTAssertEqual(state, restoring ? .restoredVerified : .quarantinedVerified)
+                XCTAssertEqual(FileManager.default.fileExists(atPath: original.path), restoring)
+            })
+        XCTAssertEqual(events, ["prepareIsolate", "resultIsolate", "prepareRestore", "resultRestore"])
+    } }
+    func testUnknownRuntimeIsRecordedAfterMoveBeforeStopping() async throws { try await fixture { store, receipt, original, isolated in
+        var count = 0
+        var recorded = false
+        do {
+            try await QuarantineStore.runOwnedFixtureScenario(store: store, receipt: receipt, runtimeCheck: {
+                count += 1; return count == 1
+            }, recordAction: { restoring, state, known in
+                recorded = true; XCTAssertFalse(restoring); XCTAssertFalse(known)
+                XCTAssertEqual(state, .quarantinedVerified)
+            })
+            XCTFail("unknown observation must stop")
+        } catch let error as OwnedFixtureProbeFailure {
+            XCTAssertEqual(error.phase, .afterIsolation)
+        }
+        XCTAssertTrue(recorded)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: original.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: isolated.path))
+    } }
+
+    func testFinalSynchronousIdentityCheckFollowsLastRuntimeAwait() async throws { try await fixture { store, receipt, original, isolated in
+        var events: [String] = []
+        do {
+            try await QuarantineStore.runOwnedFixtureScenario(store: store, receipt: receipt, runtimeCheck: { true },
+                prepareAction: { _ in events.append("prepared") },
+                validateRuntime: { events.append("lastRuntime"); return true },
+                validateAction: { events.append("identity"); throw BackupFailure.changed })
+            XCTFail("changed program must stop")
+        } catch let error as OwnedFixtureProbeFailure {
+            XCTAssertEqual(error.phase, .beforeIsolation); XCTAssertEqual(error.reason, .changed)
+        }
+        XCTAssertEqual(events, ["prepared", "lastRuntime", "identity"])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: original.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: isolated.path))
+    } }
+    func testFreshRuntimeFailureIsNotReportedAsJournalFailure() async throws { try await fixture { store, receipt, original, isolated in
+        do {
+            try await QuarantineStore.runOwnedFixtureScenario(store: store, receipt: receipt, runtimeCheck: { true }, validateRuntime: { false })
+            XCTFail("fresh runtime unknown must stop")
+        } catch let error as OwnedFixtureProbeFailure {
+            XCTAssertEqual(error.phase, .beforeIsolation); XCTAssertEqual(error.fileState, .notMoved)
+        }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: original.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: isolated.path))
+    } }
+
 }
