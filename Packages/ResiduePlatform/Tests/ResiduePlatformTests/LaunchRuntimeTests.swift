@@ -97,3 +97,48 @@ private func observe(_ text: String, build: String = "26A428", major: Int = 27, 
     for text in changes { #expect(observe(text).state == .unknown) }
     #expect(observe(runtimeFixtureAfterReboot, build: "26A429").state == .unknown)
 }
+
+@Test func observedScopedErrorTextRemainsUnknownAndPartial() {
+    let text = "Bad request.\nCould not find service \"example.residueguard.fixture.iso01\" in domain for user gui: 501\n"
+    let result = observe("", stderr: text, exit: 113)
+    #expect(result.provenance.rawMetadata["observedDiagnostic"] == "scopedServiceLookupText26A428")
+    #expect(result.state == .unknown)
+    #expect(result.coverage.state == .partial)
+    #expect(result.coverage.parsedCount == 0 && result.coverage.unparsedCount == 1)
+    #expect(result.provenance.targetReferences.isEmpty)
+
+    let negatives = [
+        observe("", stderr: text, exit: 1), observe("", stderr: text, exit: 0),
+        observe("", stderr: text, exit: nil), observe("output", stderr: text, exit: 113),
+        observe("", stderr: text, exit: 113, truncated: true),
+        observe("", stderr: text, exit: 113, failure: .timedOut),
+        observe("", stderr: text, exit: 113, failure: .cancelled),
+        observe("", build: "26A429", stderr: text, exit: 113),
+        observe("", major: 26, stderr: text, exit: 113),
+        observe("", profile: "future", stderr: text, exit: 113)
+    ] + [
+        text.replacingOccurrences(of: "501", with: "502"),
+        text.replacingOccurrences(of: "gui:", with: "user:"),
+        text.replacingOccurrences(of: "gui:", with: "system:"),
+        text.replacingOccurrences(of: "iso01", with: "iso02"),
+        text.replacingOccurrences(of: "Bad request.", with: "无效请求。"),
+        text.replacingOccurrences(of: "\n", with: "\r\n"),
+        String(text.dropLast()), "prefix\n" + text, text + "\n", text + text,
+        text + "\u{FFFD}"
+    ].map { observe("", stderr: $0, exit: 113) }
+    for rejected in negatives {
+        #expect(rejected.provenance.rawMetadata["observedDiagnostic"] == "unclassified")
+        #expect(rejected.state == .unknown && rejected.provenance.targetReferences.isEmpty)
+        #expect(rejected.coverage.parsedCount == 0)
+    }
+}
+
+@Test func observedScopedDiagnosticRejectsInvalidCollectorLabels() {
+    for label in ["-example.fixture", "example..fixture", "", "example/fixture", "example\nfixture"] {
+        let expected = LaunchRuntimeIdentity(userID: 501, label: label, sourcePath: identity.sourcePath, program: identity.program)
+        let capture = DiagnosticResult(stdout: "", stderr: "Bad request.\nCould not find service \"\(label)\" in domain for user gui: 501\n", exitCode: 113, failure: nil, outputTruncated: false)
+        let result = LaunchRuntimeParser().parse(capture, expected: expected, osMajor: 27, osBuild: "26A428", profile: LaunchRuntimeParser.profile, generation: "fixture-generation", observedAt: Date(timeIntervalSince1970: 0))
+        #expect(result.provenance.rawMetadata["observedDiagnostic"] == "unclassified")
+        #expect(result.state == .unknown && result.coverage.state == .partial)
+    }
+}

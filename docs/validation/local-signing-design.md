@@ -96,3 +96,7 @@ Gatekeeper、hardened runtime、library validation、SMAppService 注册/用户�
 ## 用户是否需要做事
 
 本轮无手工前置要求。下一步可先自动完成 VM gate、已有工具核查、构建器改造和非敏感检查。真正创建独立 keychain/证书时可能出现安全口令或私钥访问界面；如自动化不能安全处理，需要用户仅在**客体**完成该具体输入/批准，不需要购买 Developer ID、不需要修改宿主信任。当前没有验证任何此类界面必然出现，因此不能把它们提前列成已确认阻塞。
+
+## 客体工具只读预检
+
+2026-09-20 已在现有 VirtualMac 客体执行零参数只读预检：macOS 27.0/26A428，系统 LibreSSL 3.3.6，`security`、`codesign`、`csreq`、`openssl` 均存在。客体 `security help` 再次确认 create-keychain -P、unlock-keychain -u、import -k/-x/-T 和默认安全输入能力。证据保存在忽略的 `.local-evidence/vm-transfer/signing-preflight-v1.txt`。没有创建证书/密钥/keychain、读取现有身份、修改信任或search list；工具存在不等于签名方案已经通过。

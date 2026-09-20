@@ -8,6 +8,12 @@
 
 项目仍有大量可自动进行的编码和VM测试，不需要用户先购买证书、打开SIP/TCC保护或批准宿主清理。合理的下一闭环是**固定自有VM夹具的受限事务driver + 持久化恢复证据 + 故障矩阵**，继续保持第三方真实来源只读。
 
+## 后续进展校正
+
+本页下面的组件列表和门槛表保留最初审查时点，不应当作最新待办清单。随后已完成：效果分类统一、schema2完整审计绑定与迁移、固定自有VM备份/隔离/恢复及独立持久日志、runtime provenance、独立只读审计，以及单次自有服务bootout和三处日志崩溃边界。最新Quarantine 79项通过；真实bootout后查询仍unknown，不自动继续文件隔离。见[当前状态](status.md)、[日志升级](journal-schema2-results-2026-09-20.md)、[独立实验日志](owned-fixture-experiment-journal-2026-09-20.md)、[bootout结果](owned-fixture-bootout-results-2026-09-20.md)。
+
+这些进展没有把schema2接成生产driver，没有完成恢复的新授权、完整VM故障矩阵或第三方源竞争门槛。最初“journal未实现完整绑定”现仅适用于尚未升级的默认生产候选连接，不能用于否认独立schema2/实验日志成果。接下来可以自动推进只读误判矩阵、运行态关联、报告与可访问性、自有VM故障测试；稳定本地签名与helper生命周期作为独立支线，无需Developer ID。
+
 ## 已有组件与尚未成立的推论
 
 - Core 已有影响集合归并、独立确认事件、120秒计划期限、取消/重放策略及合成事务协调；`TransactionGate`只有closed/syntheticTests，`VerifiedTransactionPlan`只接受synthetic profile。不能由dry-run直接生成真实执行凭据。

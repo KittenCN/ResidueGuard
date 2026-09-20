@@ -55,6 +55,12 @@ public struct LaunchRuntimeParser: Sendable {
                 }
             }
         }
+        // An exact observed error spelling is diagnostic provenance, never a
+        // runtime presence fact. No official stable error-format contract exists.
+        let observedDiagnostic = supported && Self.matchesObservedScopedDiagnostic(result, expected: expected)
+        if observedDiagnostic {
+            reason = "Observed scoped service lookup diagnostic; runtime and domain reachability remain unknown"
+        }
         let known = state != .unknown
         let coverage = ScanCoverage(providerID: "launchd.runtime", state: supported ? (result.failure == .cancelled ? .cancelled : (known ? .completeWithinDeclaredScope : .partial)) : .unsupported,
                                     declaredRoots: [expected.target], diagnostics: [reason], userScopes: ["gui/\(expected.userID)"],
@@ -68,9 +74,22 @@ public struct LaunchRuntimeParser: Sendable {
                                       declaredAppIDs: [], targetReferences: known ? [expected.sourcePath, expected.program] : [],
                                       rawMetadata: ["stdoutSHA256": digest, "parserProfile": profile, "osBuild": osBuild,
                                                     "outputTruncated": String(result.outputTruncated),
+                                                    "observedDiagnostic": observedDiagnostic ? "scopedServiceLookupText26A428" : "unclassified",
                                                     "runtimeState": state.rawValue, "captureFailure": result.failure?.rawValue ?? "none", "exitCode": result.exitCode.map(String.init) ?? "unavailable"],
                                       parseWarnings: known ? [] : [reason])
         return .init(state: state, coverage: coverage, provenance: provenance)
+    }
+
+    private static func matchesObservedScopedDiagnostic(_ result: DiagnosticResult, expected: LaunchRuntimeIdentity) -> Bool {
+        guard result.failure == nil, !result.outputTruncated, result.exitCode == 113,
+              result.stdout.isEmpty, expected.userID > 0,
+              !expected.label.isEmpty, !expected.label.hasPrefix("-"), !expected.label.contains(".."),
+              expected.label.utf8.count <= 255,
+              expected.label.utf8.allSatisfy({ byte in
+                  (65...90).contains(byte) || (97...122).contains(byte) || (48...57).contains(byte)
+                      || byte == 46 || byte == 45 || byte == 95
+              }) else { return false }
+        return result.stderr == "Bad request.\nCould not find service \"\(expected.label)\" in domain for user gui: \(expected.userID)\n"
     }
 
     private static func fields(_ text: String, target: String) -> [String: String]? {

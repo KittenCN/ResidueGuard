@@ -21,3 +21,15 @@
 所有对照保存OS build、当前UID、上下文标识、目标、开始/结束时间、退出码、stdout/stderr摘要、failure、截断及匹配结果；不把完整域输出或个人路径带入git。域对照如会输出服务清单，应在专用VM内有界捕获、仅提取域可达证据，避免留存不必要记录；不作为全量服务枚举入口。
 
 解析器负例另用纯fixture测试：错误UID/Label、前后缀额外文本、stdout非空、exit不符、timeout/cancel/permission/launch failure、截断、未知build/profile、非精确换行/编码都不得产生该诊断类别。验证矩阵成立后仍仅给固定profile的诊断匹配，不升级写入gate。bootout返回0是命令结果，随后未找到诊断是另一条时间点观察；二者组合也不能推出源配置/应用删除或未来不会重新登记。
+
+## 有界实现：仅已观察诊断文本
+
+2026-09-20：`LaunchRuntimeParser` 现在只在现有 27/26A428/profile 白名单内，把一次完整捕获的 exit 113、空 stdout、精确两行英文 stderr（包括末尾 LF）记为 `rawMetadata.observedDiagnostic=scopedServiceLookupText26A428`；其他情况为 `unclassified`。匹配要求正 UID、有限 ASCII Label，以及诊断内精确相同 gui UID/Label。此名称刻意表达观察到的文本，不定义 semantic not-found。这没有验证域可达性、调用会话或跨 locale 稳定性；上表 VM 对照仍未执行。
+
+匹配后 runtime 仍 unknown、coverage partial、parsedCount 0、unparsedCount 1、targetReferences 空。没有新增 absent 状态、执行能力或归属输入，也未改变任何 absenceProven 字段；只增加诊断解释。错误 exit、stdout 非空、错误 UID/域/Label、本地化、CRLF、缺失/额外换行、重复文本、未知 profile/build、截断、超时和取消均有反例覆盖。错误文本来自既有自有夹具证据，本轮没有执行 launchctl。
+
+验证：显式使用项目固定 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`，`swift test --package-path Packages/ResiduePlatform --filter observedScopedErrorTextRemainsUnknownAndPartial` 1 项通过；同 package 全量 48 项通过。首次未显式固定 Xcode 的命令因当前 CommandLineTools 环境缺少测试构建依赖失败，未计作通过；随后按项目固定 Xcode 重跑成功。`git diff --check` 通过。没有运行服务修改、VM 或 GUI 测试。
+
+复核补充：Label 校验与 collector 对齐，拒绝前导 `-` 和连续 `..`；新增这两类及空值、斜杠、换行的反例。`--filter observedScoped` 两项测试通过，`git diff --check` 通过；此前全量 48 项结果在本次仅收紧 Label 校验之前。
+
+最终复核：`./script/test.sh platform` 全量49项通过（0.127秒），包括收紧后的Label反例；日志 `.local-evidence/runtime-diagnostic-final.log`。
