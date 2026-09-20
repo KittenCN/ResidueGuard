@@ -13,6 +13,15 @@ case "${1:-core}" in
  platform)
   /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResiduePlatform"
   ;;
+ audit-import)
+  /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResidueAuditImport"
+  ;;
+ quarantine)
+  /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResidueQuarantine"
+  ;;
+ recovery)
+  /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResidueRecovery"
+  ;;
  backup)
   /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResidueBackup"
   ;;
@@ -28,5 +37,5 @@ case "${1:-core}" in
  ui)
   /usr/bin/xcodebuild -project "$ROOT_DIR/ResidueGuard.xcodeproj" -scheme ResidueGuard -destination 'platform=macOS' -derivedDataPath "$ROOT_DIR/.build-xcode" CODE_SIGN_IDENTITY=- test
   ;;
- *) echo 'usage: script/test.sh [core|platform|security|persistence|backup|transactions|ui]' >&2; exit 2 ;;
+ *) echo 'usage: script/test.sh [core|platform|security|persistence|backup|transactions|quarantine|recovery|audit-import|ui]' >&2; exit 2 ;;
 esac

@@ -9,13 +9,16 @@
 - `./script/test.sh core`：使用项目选定 Xcode 的 Swift 工具链测试独立核心，无系统副作用。
 - `./script/build_and_run.sh`：使用项目固定 Xcode 构建并以 `.app` 启动；`--build-only` 只构建，`--verify` 检查启动进程。
 - `./script/test.sh platform`：独立只读采集与进程边界测试。
+- `./script/test.sh quarantine`：自有临时夹具隔离、恢复冲突与只读恢复核验。
+- `./script/test.sh recovery`：只读历史审计模型、完整性与脱敏测试。
+- `./script/test.sh audit-import`：真实文件有界读取、链接拒绝与取消测试。
 - `./script/test.sh backup`：源备份、manifest 与篡改拒绝测试。
 - `./script/test.sh transactions`：真实 SQLite 与无副作用事务驱动的集成测试。
 - `./script/test.sh persistence`：系统 SQLite 持久化日志测试，仅操作测试自有临时目录。
 - `./script/test.sh security`：无副作用的 helper 协议与身份/token 策略测试。
 - `./script/package_preview.sh`：创建本地 Debug 预览压缩包，不是正式发布。
 - `./script/release_check.sh`：只读发布门禁检查，当前预期阻断。
-- `./script/test.sh ui`：Xcode UI 测试，只操作本应用的合成演示。
+- `./script/test.sh ui`：Xcode UI 测试，只操作本应用；系统文件选择器端到端用例需显式环境开关，默认跳过。
 - Codex Run 已连接到同一构建脚本，不修改全局 `xcode-select`。
 
 首次打开不会伪装成已扫描系统。主动载入演示后，复选框表示合成 dry-run 目标；预览/确认均不执行主机写操作。权限页面明确显示读取限制和系统设置文字路径。

@@ -16,6 +16,11 @@ final class ResidueGuardUITests: XCTestCase {
     }
     func testDefaultIsUnscannedAndPermissionsAreUnavailable() {
         XCTAssertTrue(app.buttons["demo.load"].exists)
+        let notice = app.staticTexts["workspace.notice"]
+        XCTAssertTrue(notice.exists)
+        app.buttons["scan.start"].click()
+        expectation(for: NSPredicate(format: "value CONTAINS %@", "请先选择启动配置目录"), evaluatedWith: notice)
+        waitForExpectations(timeout: 3)
         XCTAssertFalse(app.checkBoxes["select.demo.orphan"].exists)
         app.staticTexts["辅助功能"].firstMatch.click()
         XCTAssertTrue(app.staticTexts["permission.unavailable"].exists)

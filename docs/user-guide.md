@@ -24,4 +24,8 @@
 
 ## 构建与发布
 
-本地预览包位于 `dist/ResidueGuard-development-preview.zip`，是 ad-hoc Debug 包，可能包含调试路径，不应公开发行。正式发布、兼容性、辅助功能人工验收及隔离系统写测试仍未完成。当前实测范围和已知缺口见 [最新验证报告](validation/final-development-results-2026-09-20.md)。
+本地预览包位于 `dist/ResidueGuard-development-preview.zip`，是 ad-hoc Debug 包，可能包含调试路径，不应公开发行。正式发布、兼容性、辅助功能人工验收及隔离系统写测试仍未完成。当前实测范围和已知缺口见 [项目当前状态](validation/status.md)。本地开发暂不要求 Developer ID 或 App Store 发布。
+
+## 当前隔离实验的恢复边界
+
+VM 实验已验证自有配置的备份、精确卸载与文件恢复正常路径。恢复当下不自动运行服务；但把配置放回 LaunchAgents 后，下次登录时系统可能重新登记它。RunAtLoad=false 只影响运行触发，不能承诺永不登记。实验能力尚未开放为主界面的真实清理/恢复按钮。

@@ -11,7 +11,7 @@ struct ResidueGuardApp: App {
                 WorkspaceView()
             }
         }
-        .defaultSize(width: 1220, height: 780)
+        .defaultSize(width: 1220, height: 660)
         Settings { SettingsView() }
     }
 }

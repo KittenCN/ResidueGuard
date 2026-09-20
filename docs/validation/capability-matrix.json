@@ -37,7 +37,12 @@
     "provider-dossier.md",
     "p2-results-2026-09-20.md",
     "vm-continuation-2026-09-20.md",
-    "vm-system-results-2026-09-20.md"
+    "vm-system-results-2026-09-20.md",
+    "vm-gui-scan-2026-09-20.md",
+    "runtime-collector-2026-09-20.md",
+    "journal-crash-results-2026-09-20.md",
+    "backup-results-2026-09-20.md",
+    "persistent-transaction-bridge-2026-09-20.md"
   ],
   "providers": [
     {
@@ -46,7 +51,7 @@
       "providerVersion": "launch-plist-readonly-v1",
       "parserVersion": "launch-plist-v2",
       "evidenceLevel": "limitedReadOnlyHostObservation",
-      "evidenceReference": "vm-continuation-2026-09-20.md",
+      "evidenceReference": "vm-gui-scan-2026-09-20.md",
       "enumerate": "readOnly",
       "readStatus": "unverified",
       "removeRegistration": "unverified",
@@ -58,7 +63,7 @@
       "testedOSBuilds": [
         "26A428"
       ],
-      "reason": "Bounded immediate plist enumeration observed; malformed rows retained. No runtime, ownership-complete or mutation validation.",
+      "reason": "Bounded immediate plist enumeration observed on host and explicit NSOpenPanel-selected VM root; ungranted target remains unverified. No ownership-complete or production mutation validation.",
       "scopeConstraints": [
         "Explicit current-user or standard shared launch configuration roots",
         "Limited read-only host observation; no mutation validation",
@@ -70,22 +75,27 @@
     {
       "providerID": "launchd-runtime",
       "osBuild": "26A428",
-      "providerVersion": null,
-      "parserVersion": null,
-      "evidenceLevel": "documentaryOnly",
-      "evidenceReference": "provider-dossier.md",
+      "providerVersion": "exact-runtime-opt-in-v1",
+      "parserVersion": "launchctl-print-gui-26A428-v1",
+      "evidenceLevel": "limitedReadOnlyVMObservation",
+      "evidenceReference": "runtime-collector-2026-09-20.md",
       "enumerate": "unverified",
-      "readStatus": "unverified",
+      "readStatus": "readOnly",
       "removeRegistration": "unverified",
       "resetPermission": "unverified",
       "verifyOutcome": "unverified",
       "restoreConfiguration": "unverified",
       "mutationEnabled": false,
-      "osIntegrationResult": "notRun",
-      "testedOSBuilds": [],
-      "reason": "launchctl print is diagnostic, not stable API; no runtime sample.",
+      "osIntegrationResult": "passed",
+      "testedOSBuilds": [
+        "26A428"
+      ],
+      "reason": "Fixed self-owned ISO01 VM service observed after reboot through opt-in collector. Diagnostic format is unstable; unknown/conflicting output rejected. Not full enumeration or GUI integration.",
       "scopeConstraints": [
-        "P1 synthetic demonstration only",
+        "Default disabled; explicit exact-service opt-in",
+        "Current non-root user only; source and program association required",
+        "Only known macOS27/26A428 profile",
+        "No absence proof or ownership/signature proof",
         "No production-host mutation",
         "No global reset",
         "Unknown impact blocked"

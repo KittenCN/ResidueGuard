@@ -21,6 +21,12 @@ struct ScanControlsView: View {
             }
             Text("仅扫描主动选择的目录；配置目录 \(store.configuredLaunchRoots.count) 个，应用索引目录 \(store.configuredApplicationRoots.count) 个。不运行所发现程序，不持久化授权。")
                 .font(.caption).foregroundStyle(.secondary)
+            ScrollView(.vertical) {
+                Text(store.notice).font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("workspace.notice")
+                    .accessibilityLabel("状态提示").accessibilityValue(store.notice)
+            }.frame(height: 40)
         }.padding(.horizontal).padding(.bottom, 10)
     }
 }

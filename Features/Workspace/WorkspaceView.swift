@@ -34,12 +34,11 @@ struct WorkspaceView: View {
                 Divider()
                 if store.page == .overview { OverviewView(store: store) }
                 else if store.page.isPermission { PermissionGuidanceView(page: store.page) }
-                else if store.page == .history || store.page == .ignore {
+                else if store.page == .history { HistoryReportView() }
+                else if store.page == .ignore {
                     ContentUnavailableView(store.page.rawValue, systemImage: store.page.symbol,
-                        description: Text(store.page == .history ? "P1 仅在内存中预演，不执行清理、不创建系统备份，也不提供恢复授权。" : "P1 尚未启用持久化忽略规则。没有自动清理或自动勾选。"))
+                        description: Text("P1 尚未启用持久化忽略规则。没有自动清理或自动勾选。"))
                 } else { RecordsView(store: store) }
-                Divider()
-                Text(store.notice).font(.caption).foregroundStyle(.secondary).padding(10).textSelection(.enabled)
             }
             .navigationTitle(store.page.rawValue)
             .toolbar { Button { showInspector.toggle() } label: { Label("详情", systemImage: "sidebar.right") } }
