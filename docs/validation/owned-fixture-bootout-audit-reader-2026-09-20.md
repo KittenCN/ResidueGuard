@@ -36,3 +36,19 @@ release 路径：`Packages/ResidueBackup/.build/out/Products/Release/ResidueOwne
 父进程复用已有10秒有界checkpoint等待、确认它创建的worker尚活着且token/phase匹配、仅杀自己的PID、wait收尸，再启动独立只读 verify。每阶段使用新随机token，测试后仅移除该临时根；不碰宿主 LaunchAgents、实际程序或系统服务。verify 必须调用真实 OwnedBootoutLog(readOnly:true) / OwnedBootoutAuditReader，比较文件名称/内容摘要未变、无新文件，不运行恢复。
 
 如需验证 outcome 文件写到一半时的 torn record，再单独增加 DEBUG 文件写入中 checkpoint：读取应 failedLog/未知，而不是回退为旧成功；该项不必混入首批三个持久边界测试。现有 append 成功返回后的 checkpoint 不能声称覆盖“写中断”。真正 bootout 发送中的 SIGKILL 是另一个有副作用 VM 实验，需要受控快照与单独阶段安排，不由上述宿主 synthetic 测试替代。
+
+## 三阶段 synthetic SIGKILL 实测
+
+主任务随后授权实现上述三阶段。新增 DEBUG-only `OwnedBootoutCrashLab.swift` 与 `OwnedBootoutCrashIntegrationTests.swift`；现有 CrashProbe 增加独立 bootout phase / bootoutVerify 闭集路由，原五阶段和 verify 保持兼容。没有修改 SourceContext、VM probe、transport 或日志协议。
+
+每阶段使用新 UUID 与现有随机临时根。worker 写 durable checkpoint 后等待，父测试仅 SIGKILL 自己创建的 worker 并确认 signal/回收；随后独立 verify 进程调用真实严格只读日志 reader。三阶段分别确认 intent-only pending/unknown、fake issued但尚无outcome的pending/unknown、已有outcome但无post观察的unknown。verify 前后递归所有普通文件名称和字节完全相同。测试目录最后仅由父测试清理。
+
+**真实 transport/service 调用为零**：issue closure 只返回固定合成 capture 值；意图和独立输出均标 syntheticRuntimeAndBuild=true / actualServiceCalls=0。没有 launchctl、VM服务卸载、重载或进程启动夹具。此处 launched=true 仅为合成 dispatch 情形，不声称测试启动了服务。
+
+固定 Xcode 实际命令：
+
+- `swift test --package-path Packages/ResidueBackup --filter OwnedBootoutCrashIntegrationTests`：3 项独立进程 SIGKILL 场景通过。
+- `swift test --package-path Packages/ResidueBackup --filter ResidueQuarantineTests`：79 项通过，包含原有五阶段及原只读sidecar拒绝场景。
+- `git diff --check` 通过。未提交。
+
+尚未覆盖文件写入中间 torn-record crash 或真实 launchd 请求进行中的进程终止；不将上述结果推广为这两类验收。

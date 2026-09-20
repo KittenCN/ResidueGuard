@@ -38,3 +38,5 @@ BTM独立VM只读探针在5秒与30秒预算下均超时、双流为空，原因
 固定自有VM bootout单次实测exit0，源/程序未变；后置print113仍保留unknown，不自动bootstrap/隔离。Quarantine76项通过（含Bootout13项和独立reader4项），独立只读进程VM核验exit0，1条/4槽、0失败、无执行授权。见[服务实验](owned-fixture-bootout-results-2026-09-20.md)。源身份到rename之间未找到公开原子绑定接口，第三方gate继续关闭，见[竞争研究](source-identity-race-research-2026-09-20.md)。
 
 P4新增有界HelperRequest wire codec：16KiB/深度/字符串限制，严格规范字节与版本/字段校验；Security23项通过。未连接真实认证或executor，解析成功不产生权限。见[wire验证](helper-wire-codec-2026-09-20.md)。
+
+独立Bootout日志新增3处真实进程SIGKILL边界：intent后、合成issued后/outcome前、outcome后；另一个只读进程验证pending/known历史并保持全部文件字节不变。全部系统命令为合成注入，不算真实服务中断验收。完整Quarantine79项通过。详见[日志审计及崩溃记录](owned-fixture-bootout-audit-reader-2026-09-20.md)。
