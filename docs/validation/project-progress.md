@@ -14,13 +14,13 @@
 
 ## 当前验证汇总
 
-Core 30、Security 9、Platform 21 项已实际通过；Core 的 10,000 条合成报告处理观测为 0.437242541 秒（JSON + CSV），只测核心报告生成，不是 GUI 滚动或扫描性能。最终总计 11 项 GUI 测试首次存在报告预览辅助功能断言失败；显式提供 accessibilityValue 并修正读取断言后，针对性 1 项复测通过，最终完整 11 项通过（94.763 秒，0 失败）。静态签名元数据不是签名有效性/系统信任验证。
+Core 30、Security 11、Platform 28 项已实际通过（最新路径/schema/token 回归见 VM 接续报告）；Core 的 10,000 条合成报告处理观测为 0.437242541 秒（JSON + CSV），只测核心报告生成，不是 GUI 滚动或扫描性能。最终总计 11 项 GUI 测试首次存在报告预览辅助功能断言失败；显式提供 accessibilityValue 并修正读取断言后，针对性 1 项复测通过，最终完整 11 项通过（94.763 秒，0 失败）。静态签名元数据不是签名有效性/系统信任验证。
 
 ## 仍然关闭的能力
 
 没有真实清理 driver、提权 helper、服务卸载/隔离、备份恢复、权限重置、全局 reset 或 macOS 27+ TCC 直读。真实扫描行不可执行；合成 dry-run 完成不会生成系统写授权。隔离实验及分发 profile 没有通过，不因纯逻辑测试开放 mutation。
 
-当前窄范围工具探测未发现常见 VM 应用/CLI，可用 codesigning identity 计数为 0。检查范围和后续入场条件见 [隔离验证](../isolated-validation.md)。这不代表全机绝无 VM，也不影响本地 ad-hoc Debug 构建。
+现已识别用户安装的 VirtualBuddy VM，并建立停止状态的回滚副本和专用交换目录。客体重启后待本地登录，ISO-01/04 仍未执行。宿主可用 codesigning identity 计数复查仍为 0；ad-hoc 不替代 helper/Developer ID 信任。最新证据见 [VM 接续](vm-continuation-2026-09-20.md)。
 
 ## 下一阶段优先级
 

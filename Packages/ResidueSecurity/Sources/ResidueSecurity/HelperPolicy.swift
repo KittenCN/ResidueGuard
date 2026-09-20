@@ -16,10 +16,11 @@ public enum PolicyReviewOutcome: Sendable { case reviewOnlyValidated }
 /// In-memory contract simulator, not a helper or executor. No filesystem/process/XPC operations.
 /// Tokens intentionally die at process restart; durable execution journal is not implemented.
 public actor HelperPolicy {
-    private struct Issued: Sendable { let token: PlanToken; let caller: VerifiedCaller }
+    private struct Issued: Sendable { let token: PlanToken; let caller: VerifiedCaller; let planRevision: UUID }
     private let profile: ClientProfile
     private let authenticator: any CallerAuthenticating
     private var plans: [UUID: ReviewedServerPlan] = [:]
+    private var planRevisions: [UUID: UUID] = [:]
     private var issued: [UUID: Issued] = [:]
     private var consumed: Set<UUID> = []
     private var consumedPlans: Set<UUID> = []
@@ -29,7 +30,9 @@ public actor HelperPolicy {
     // Future server-side planner integration only; not callable from an importing GUI module.
     func registerForPolicyReview(_ plan: ReviewedServerPlan) throws {
         guard plans.count < 1024 else { throw SecurityFailure.capacityExceeded }
+        // Re-registration invalidates all older receipts even if an upstream planner reuses a digest.
         plans[plan.id] = plan
+        planRevisions[plan.id] = UUID()
     }
     public func preparePolicyReview(planID: UUID, protocolVersion: Int, policyVersion: Int) async throws -> PlanToken {
         try await preparePolicyReview(planID: planID, protocolVersion: protocolVersion, policyVersion: policyVersion, now: nil)
@@ -40,7 +43,7 @@ public actor HelperPolicy {
         let now = now ?? Date()
         guard profile.accepts(caller) else { throw SecurityFailure.callerRejected }
         guard !consumedPlans.contains(planID) else { throw SecurityFailure.replayed }
-        guard let plan = plans[planID] else { throw SecurityFailure.unknownSource }
+        guard let plan = plans[planID], let revision = planRevisions[planID] else { throw SecurityFailure.unknownSource }
         guard plan.scope == .currentUser else { throw SecurityFailure.scopeBlocked }
         guard plan.impact == .boundedUserOrphans || plan.impact == .containsInstalled else { throw SecurityFailure.impactBlocked }
         guard plan.digest.count == 64, plan.digest.allSatisfy({ $0.isASCII && $0.isHexDigit }) else { throw SecurityFailure.invalidDigest }
@@ -48,7 +51,7 @@ public actor HelperPolicy {
         guard now >= plan.createdAt, now < expiry else { throw SecurityFailure.expired }
         guard issued.count < 1024 else { throw SecurityFailure.capacityExceeded }
         let token = PlanToken(planID: plan.id, source: plan.source, scope: plan.scope, digest: plan.digest, nonce: UUID(), expiresAt: expiry)
-        issued[token.nonce] = Issued(token: token, caller: caller)
+        issued[token.nonce] = Issued(token: token, caller: caller, planRevision: revision)
         return token
     }
     public func consumeForPolicyReview(_ token: PlanToken) async throws -> PolicyReviewOutcome {
@@ -61,7 +64,8 @@ public actor HelperPolicy {
         guard profile.accepts(caller) else { throw SecurityFailure.callerRejected }
         guard !consumed.contains(token.nonce), !consumedPlans.contains(token.planID) else { throw SecurityFailure.replayed }
         guard let original = issued[token.nonce] else { throw SecurityFailure.unknownToken }
-        guard original.caller == caller, original.token == token else { throw SecurityFailure.tokenMismatch }
+        guard original.caller == caller, original.token == token,
+              original.planRevision == planRevisions[token.planID] else { throw SecurityFailure.tokenMismatch }
         guard let plan = plans[token.planID], plan.digest == token.planDigest, plan.source == token.source else { throw SecurityFailure.tokenMismatch }
         guard now >= plan.createdAt, now < token.expiresAt else { throw SecurityFailure.expired }
         guard plan.scope == .currentUser, token.scope == .currentUser else { throw SecurityFailure.scopeBlocked }

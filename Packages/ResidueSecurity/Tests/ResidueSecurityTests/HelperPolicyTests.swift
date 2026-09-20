@@ -97,3 +97,30 @@ private actor ChangingTransport: CallerAuthenticating {
     try await policy.registerForPolicyReview(changed)
     await #expect(throws: SecurityFailure.tokenMismatch) { try await policy.consumeForPolicyReview(token, now: time) }
 }
+
+@Test func replacingReviewedPlanInvalidatesTokenEvenWhenDigestIsReused() async throws {
+    // An integration error must not let a caller-supplied/reused digest conceal changed impact or freshness.
+    for (changedImpact, changedCreation) in [(ReviewedServerPlan.Impact.containsInstalled, time),
+                                              (.boundedUserOrphans, time.addingTimeInterval(1))] {
+        let policy = HelperPolicy(profile: profile, authenticator: SyntheticTransport(value: caller()))
+        let original = plan(); try await policy.registerForPolicyReview(original)
+        let token = try await policy.preparePolicyReview(planID: original.id, protocolVersion: 1, policyVersion: 1, now: time)
+        let replacement = ReviewedServerPlan(id: original.id, source: original.source, digest: original.digest,
+            scope: original.scope, impact: changedImpact, createdAt: changedCreation)
+        try await policy.registerForPolicyReview(replacement)
+        await #expect(throws: SecurityFailure.tokenMismatch) {
+            try await policy.consumeForPolicyReview(token, now: time.addingTimeInterval(2))
+        }
+    }
+}
+
+@Test func revertingServerPlanDoesNotReviveOldToken() async throws {
+    let policy = HelperPolicy(profile: profile, authenticator: SyntheticTransport(value: caller()))
+    let original = plan(); try await policy.registerForPolicyReview(original)
+    let old = try await policy.preparePolicyReview(planID: original.id, protocolVersion: 1, policyVersion: 1, now: time)
+    try await policy.registerForPolicyReview(original)
+    await #expect(throws: SecurityFailure.tokenMismatch) { try await policy.consumeForPolicyReview(old, now: time) }
+    let fresh = try await policy.preparePolicyReview(planID: original.id, protocolVersion: 1, policyVersion: 1, now: time)
+    _ = try await policy.consumeForPolicyReview(fresh, now: time)
+    #expect(await policy.executionAvailability() == .authorizationUnavailable)
+}

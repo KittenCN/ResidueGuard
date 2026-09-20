@@ -15,3 +15,9 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --package-pa
 ```
 
 测试使用 `@testable` 合成 transport 身份，只验证纯策略；它不是对生产 XPC 或操作系统认证的测试。
+
+## Plan revision binding (2026-09-20)
+
+Server-side re-registration now rotates an internal revision identity. Every policy-review receipt binds that revision in addition to its digest and authenticated connection. Previously, replacing a registered plan while accidentally reusing its digest allowed an old token to validate even when the impact changed from orphan to installed, or the plan creation time changed. Internal revision binding invalidates old receipts regardless of digest reuse, including an identical re-registration; a new review receipt is required. This remains an in-memory simulator and does not provide OS authorization.
+
+Regression verification: the new digest-reuse test first failed with two unexpected `reviewOnlyValidated` outcomes, then passed after revision binding. `./script/test.sh security` passes 11 Swift Testing cases, including replacement, identical re-registration, fresh-token validity, and the unchanged closed execution gate. No helper, XPC transport, or system mutation was tested.

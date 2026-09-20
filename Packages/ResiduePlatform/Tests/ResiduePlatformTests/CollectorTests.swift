@@ -140,3 +140,60 @@ func alternateExternalVolumeSpellingDoesNotBecomeMissingTarget(prefix: String) a
     #expect(SafeFiles.isTrashPath("/fixture/.trash/tool"))
     #expect(!SafeFiles.isExternalVolumePath("/VolumesOther/tool"))
 }
+
+@Test func invalidCriticalLaunchFieldTypesAreRejectedWithoutFallback() throws {
+    let invalidFields: [(String, Any)] = [
+        ("Program", 42), ("Program", ""), ("Program", "/bin/ls\0ignored"),
+        ("ProgramArguments", "/bin/ls"), ("ProgramArguments", ["/bin/ls", 42]),
+        ("ProgramArguments", [String]()), ("ProgramArguments", ["/bin/ls", "value\0"]),
+        ("RunAtLoad", 1), ("RunAtLoad", "true"), ("KeepAlive", 0),
+        ("KeepAlive", ["SuccessfulExit": 1]), ("KeepAlive", ["PathState": ["/fixture": 1]]),
+        ("WorkingDirectory", ["/tmp"]), ("UserName", 501),
+        ("BundleProgram", 1), ("AssociatedBundleIdentifiers", ["test.fixture", 1])
+    ]
+    for format in [PropertyListSerialization.PropertyListFormat.xml, .binary] {
+        for (key, value) in invalidFields {
+            var values: [String: Any] = ["Label": "fixture.invalid", "Program": "/bin/ls", "ProgramArguments": ["/bin/ls"]]
+            values[key] = value
+            #expect(throws: (any Error).self, "Invalid field \(key) must not become a normal target") {
+                try LaunchConfigurationParser.parse(fixture(values, format: format), source: URL(fileURLWithPath: "/fixture/invalid.plist"), scope: "test", generation: "g")
+            }
+        }
+    }
+}
+
+@Test func validCriticalLaunchTypesAndEmptyArgumentRemainAccepted() throws {
+    for keepAlive: Any in [true, false, ["SuccessfulExit": false], ["PathState": ["/fixture/path": true]]] {
+        let data = try fixture(["Label": "fixture.valid", "Program": "/bin/ls", "ProgramArguments": ["custom-argv-zero", ""], "RunAtLoad": false, "KeepAlive": keepAlive, "WorkingDirectory": "/fixture", "UserName": "fixture", "AssociatedBundleIdentifiers": ["test.fixture"]])
+        let record = try LaunchConfigurationParser.parse(data, source: URL(fileURLWithPath: "/fixture/valid.plist"), scope: "test", generation: "g")
+        #expect(record.targetReferences == ["/bin/ls"])
+        #expect(record.parseWarnings.isEmpty)
+    }
+}
+
+@Test func invalidLaunchSchemaRetainsSourceAndPartialCoverage() async throws {
+    let root = try directory(); defer { try? FileManager.default.removeItem(at: root) }
+    let source = root.appendingPathComponent("invalid.plist")
+    try fixture(["Label": "fixture.invalid", "Program": 42, "ProgramArguments": ["/bin/ls"]]).write(to: source)
+    let snapshot = await ScanService(configuration: ScanConfiguration(launchRoots: [ScanRoot(url: root, scope: "test")], applicationRoots: [])).scan()
+    #expect(snapshot.rows.count == 1)
+    #expect(snapshot.rows.first?.presence == .unknown)
+    #expect(snapshot.rows.first?.record.sourceArtifact == source.path)
+    #expect(snapshot.rows.first?.record.targetReferences.isEmpty == true)
+    #expect(snapshot.rows.first?.record.parseWarnings.isEmpty == false)
+    #expect(snapshot.coverage.first?.state == .partial)
+    #expect(snapshot.coverage.first?.unparsedCount == 1)
+    #expect(snapshot.coverage.first?.parsedCount == 0)
+}
+
+@Test func argumentsOnlyNeedsTargetAndUnknownKeepAliveRetainsProvenance() throws {
+    #expect(throws: (any Error).self) {
+        try LaunchConfigurationParser.parse(fixture(["Label": "fixture", "ProgramArguments": ["", "arg"]]), source: URL(fileURLWithPath: "/fixture/a"), scope: "test", generation: "g")
+    }
+    let data = try fixture(["Label": "fixture", "ProgramArguments": ["/bin/ls", ""], "KeepAlive": ["FutureCondition": ["value": 1]]])
+    let record = try LaunchConfigurationParser.parse(data, source: URL(fileURLWithPath: "/fixture/a"), scope: "test", generation: "g")
+    #expect(record.targetReferences == ["/bin/ls"])
+    #expect(record.parseWarnings.contains("additionalKeepAliveSemanticsUnverified"))
+    #expect(Data(base64Encoded: record.rawMetadata["rawPropertyListBase64"]!) == data)
+    #expect(record.rawMetadata["parserVersion"] == "launch-plist-v2")
+}
