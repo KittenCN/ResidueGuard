@@ -13,7 +13,21 @@ final class WorkspaceStore {
             review = nil
         }
     }
-    private(set) var records: [WorkspaceRecord] = []
+    private var sourceRecords: [WorkspaceRecord] = []
+    let retention = RetentionStore()
+    private var lastProtectedIDs: Set<String> = []
+    var retentionIsSessionOnly: Bool { isDemo || isSyntheticScan }
+    var records: [WorkspaceRecord] {
+        let rules = Dictionary(uniqueKeysWithValues: (retentionIsSessionOnly ? retention.sessionRules : retention.localRules).map { ($0.recordIdentity, $0) })
+        let now = Date()
+        return sourceRecords.map { source in
+            var copy = source
+            if let observation = source.retentionObservation, let identity = observation.identity, let rule = rules[identity] {
+                copy.isRetained = RetentionRuleMatcher.evaluate(rule: rule, observation: observation, now: now) == .protected
+            }
+            return copy
+        }
+    }
     private(set) var isDemo = false
     private(set) var coverage: [ScanCoverage] = []
     private(set) var isScanning = false
@@ -74,14 +88,14 @@ final class WorkspaceStore {
             let result = try await DemoLoader.load(from: url)
             guard !Task.isCancelled else { notice = "演示加载已取消。"; return }
             previousSourceRecords = nil
-            records = result.map(WorkspaceRecord.init(demo:)); coverage = []; isDemo = true; loadedAt = Date(); generation = UUID().uuidString
+            sourceRecords = result.map(WorkspaceRecord.init(demo:)); coverage = []; isDemo = true; loadedAt = Date(); generation = UUID().uuidString
             selectedIDs.removeAll(); inspectedID = nil
             notice = "已载入合成演示数据，不代表本机扫描结果。"
         } catch { notice = "演示加载失败：\(error.localizedDescription)" }
     }
     func unloadDemo() {
         previousSourceRecords = nil
-        records = []; coverage = []; isDemo = false; loadedAt = nil; generation = UUID().uuidString
+        sourceRecords = []; coverage = []; isDemo = false; loadedAt = nil; generation = UUID().uuidString
         selectedIDs.removeAll(); inspectedID = nil; notice = "已退出演示；尚未运行真实扫描。"
     }
 
@@ -99,7 +113,7 @@ final class WorkspaceStore {
         guard isSyntheticScan || !configuredLaunchRoots.isEmpty else {
             notice = "请先选择启动配置目录，明确授权只读范围。"; return
         }
-        records = []; coverage = []; isDemo = false; loadedAt = nil
+        sourceRecords = []; coverage = []; isDemo = false; loadedAt = nil
         selectedIDs.removeAll(); inspectedID = nil; review = nil; showsReview = false
         generation = UUID().uuidString
         let requestedGeneration = generation
@@ -119,7 +133,7 @@ final class WorkspaceStore {
             }
             let snapshot = await scanner.scan(configuration)
             guard generation == requestedGeneration else { return }
-            records = snapshot.rows.map(WorkspaceRecord.init(scan:))
+            sourceRecords = snapshot.rows.map(WorkspaceRecord.init(scan:))
             coverage = snapshot.coverage; loadedAt = snapshot.observedAt
             generation = snapshot.generation
             let currentSources = snapshot.rows.map(\.record)
@@ -140,23 +154,58 @@ final class WorkspaceStore {
         scanTask?.cancel()
     }
     func select(_ record: WorkspaceRecord, value: Bool) {
-        guard record.canSelect else { return }
+        guard !retention.isBusy, record.canSelect else { return }
         if value { selectedIDs.insert(record.id) } else { selectedIDs.remove(record.id) }
     }
     func showSelected() { search = ""; statusFilter = "全部"; sourceFilter = "全部"; scopeFilter = "全部"; onlySelected = true }
     func makePlan(expandedImpactApproved: Bool = false) {
-        guard isDemo && !isScanning else { review = nil; showsReview = false; return }
+        guard isDemo && !isScanning && !retention.isBusy else { review = nil; showsReview = false; return }
         let snapshot = PlanSnapshot(generation: generation, osBuild: "synthetic", records: records.map {
             PlanningRecord(id: $0.id, operationKey: "synthetic.configuration.\($0.id)", affectedTargetIDs: $0.affectedIDs,
                 capability: CapabilityDescriptor(profileID: "synthetic-demo-only", state: $0.preciseOperation ? .supportedVerified : .guidedOnly,
                     testedOSBuilds: ["synthetic"], reason: "仅用于合成策略预演，不赋予系统执行能力", operations: [.removeRegistration: $0.preciseOperation ? .supportedVerified : .guidedOnly]),
                 fingerprint: "synthetic-v1:\($0.id)")
         }, targets: records.map {
-            ImpactTarget(id: $0.id, displayName: $0.name, presence: $0.presence, isProtectedOrManaged: $0.protected,
+            ImpactTarget(id: $0.id, displayName: $0.name, presence: $0.presence, isProtectedOrManaged: $0.protected || $0.isRetained,
                          fingerprint: "synthetic-v1:\($0.id)")
         }, observedAt: loadedAt ?? .distantPast)
         review = DryRunPlanner.makePlan(selectedRecordIDs: selectedIDs, snapshot: snapshot,
                                        expandedImpactApproved: expandedImpactApproved, now: Date())
         showsReview = true
+    }
+}
+
+extension WorkspaceStore {
+    func refreshRetentionProtection() {
+        guard !isScanning else { return }
+        let current = Set(records.filter(\.isRetained).map(\.id))
+        guard current != lastProtectedIDs else { return }
+        lastProtectedIDs = current
+        invalidateRetentionSelection()
+    }
+    private func invalidateRetentionSelection() {
+        selectedIDs.removeAll(); review = nil; showsReview = false
+        generation = UUID().uuidString
+    }
+    func retainRecord(_ record: WorkspaceRecord) async {
+        guard !isScanning, !isLoading else { return }
+        guard let observation = record.retentionObservation,
+              let identity = observation.identity, let fingerprint = observation.fingerprint else { return }
+        invalidateRetentionSelection()
+        await retention.add(identity: identity, fingerprint: fingerprint, sessionOnly: retentionIsSessionOnly)
+        refreshRetentionProtection()
+        notice = retention.message
+    }
+    func removeRetentionRule(_ rule: RetentionRule, sessionOnly: Bool) async {
+        guard !isScanning, !isLoading else { return }
+        invalidateRetentionSelection()
+        await retention.remove(rule, sessionOnly: sessionOnly)
+        refreshRetentionProtection()
+        notice = retention.message
+    }
+    func retentionState(_ rule: RetentionRule, sessionOnly: Bool, now: Date) -> RetentionMatchState {
+        let observation = sessionOnly == retentionIsSessionOnly
+            ? sourceRecords.compactMap(\.retentionObservation).first(where: { $0.identity == rule.recordIdentity }) : nil
+        return RetentionRuleMatcher.evaluate(rule: rule, observation: observation, now: now)
     }
 }

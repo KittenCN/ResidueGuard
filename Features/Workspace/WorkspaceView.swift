@@ -16,6 +16,7 @@ struct WorkspaceView: View {
                 }
             }
             .listStyle(.sidebar)
+            .accessibilityIdentifier("workspace.sidebar")
             .navigationSplitViewColumnWidth(min: 190, ideal: 215, max: 280)
         } detail: {
             VStack(alignment: .leading, spacing: 0) {
@@ -35,15 +36,22 @@ struct WorkspaceView: View {
                 if store.page == .overview { OverviewView(store: store) }
                 else if store.page.isPermission { PermissionGuidanceView(page: store.page) }
                 else if store.page == .history { HistoryReportView() }
-                else if store.page == .ignore {
-                    ContentUnavailableView(store.page.rawValue, systemImage: store.page.symbol,
-                        description: Text("P1 尚未启用持久化忽略规则。没有自动清理或自动勾选。"))
-                } else { RecordsView(store: store) }
+                else if store.page == .ignore { RetentionRulesView(store: store) } else { RecordsView(store: store) }
             }
             .navigationTitle(store.page.rawValue)
             .toolbar { Button { showInspector.toggle() } label: { Label("详情", systemImage: "sidebar.right") } }
-            .inspector(isPresented: $showInspector) { RecordInspector(record: store.inspected, loadedAt: store.loadedAt) }
+            .inspector(isPresented: $showInspector) { RecordInspector(record: store.inspected, loadedAt: store.loadedAt,
+                retentionAvailable: !store.retention.isBusy && (store.retentionIsSessionOnly || store.retention.isReady),
+                retain: { record in Task { await store.retainRecord(record) } }) }
             .inspectorColumnWidth(min: 240, ideal: 280, max: 400)
+        }
+        .task {
+            await store.retention.loadIfNeeded()
+            store.refreshRetentionProtection()
+            while !Task.isCancelled {
+                do { try await Task.sleep(for: .seconds(30)) } catch { break }
+                store.refreshRetentionProtection()
+            }
         }
         .frame(minWidth: 980, minHeight: 640)
         .sheet(isPresented: $store.showsReview) { CleanupReviewView(store: store) }

@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 import ResidueCore
 import ResiduePlatform
 
@@ -19,10 +20,12 @@ struct WorkspaceRecord: Identifiable, Sendable {
     let isSynthetic: Bool
     let provenance: SourceRecord?
     let capabilityReason: String
+    var isRetained = false
     var canSelect: Bool {
-        isSynthetic && !protected && preciseOperation && (presence == .present || presence == .highConfidenceOrphan)
+        isSynthetic && !protected && !isRetained && preciseOperation && (presence == .present || presence == .highConfidenceOrphan)
     }
     var actionLabel: String {
+        if isRetained { return "用户保留 · 禁止操作" }
         if !isSynthetic { return "只读 · 系统修改禁用" }
         if protected { return "受保护，禁止操作" }
         if !preciseOperation { return "需系统设置处理" }
@@ -52,5 +55,18 @@ struct WorkspaceRecord: Identifiable, Sendable {
         reason = (scan.evidence + record.parseWarnings).joined(separator: "\n")
         protected = false; preciseOperation = false; affectedIDs = []
         isSynthetic = false; provenance = record; capabilityReason = scan.capability.reason
+    }
+}
+
+extension WorkspaceRecord {
+    var retentionObservation: RetentionObservation? {
+        if isSynthetic {
+            let fields = [id, name, bundleID, path, source, scope, reason] + affectedIDs
+            guard let bytes = try? JSONEncoder().encode(fields) else { return nil }
+            let digest = SHA256.hash(data: bytes).map { String(format: "%02x", $0) }.joined()
+            return .init(identity: .init(providerID: "synthetic.retention", scope: scope, nativeIdentity: id), fingerprint: digest)
+        }
+        guard let provenance, let digest = provenance.rawMetadata["contentSHA256"] else { return nil }
+        return .init(identity: provenance.id, fingerprint: digest)
     }
 }

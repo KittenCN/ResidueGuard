@@ -14,7 +14,7 @@ struct RecordsView: View {
                 Table(store.visibleRecords, selection: $store.inspectedID) {
                     TableColumn("预演选择") { record in
                         Toggle("选择 \(record.name)", isOn: Binding(get: { store.selectedIDs.contains(record.id) }, set: { store.select(record, value: $0) }))
-                            .labelsHidden().toggleStyle(.checkbox).disabled(!record.canSelect)
+                            .labelsHidden().toggleStyle(.checkbox).disabled(!record.canSelect || store.retention.isBusy)
                             .help(record.actionLabel).accessibilityIdentifier("select.\(record.id)")
                     }.width(65)
                     TableColumn("软件名称") { record in
@@ -33,7 +33,7 @@ struct RecordsView: View {
                     Button("查看全部已选") { store.showSelected() }.disabled(store.selectedIDs.isEmpty)
                     Spacer()
                     Button("检查所选操作（dry-run）") { store.makePlan() }
-                        .disabled(store.selectedIDs.isEmpty).accessibilityIdentifier("review.open")
+                        .disabled(store.selectedIDs.isEmpty || store.retention.isBusy).accessibilityIdentifier("review.open")
                 }
             }
         }.padding(16)

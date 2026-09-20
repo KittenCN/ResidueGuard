@@ -3,6 +3,8 @@ import SwiftUI
 struct RecordInspector: View {
     let record: WorkspaceRecord?
     let loadedAt: Date?
+    let retentionAvailable: Bool
+    let retain: (WorkspaceRecord) -> Void
     var body: some View {
         ScrollView {
             if let record {
@@ -11,6 +13,11 @@ struct RecordInspector: View {
                     Text(record.name).font(.title2)
                     field("存在状态", record.presence.title)
                     field("可用操作", record.actionLabel)
+                    Button("保留这条记录30天") { retain(record) }
+                        .disabled(!retentionAvailable || record.retentionObservation == nil || record.isRetained)
+                        .accessibilityIdentifier("retention.add")
+                    Text("只增加保护，不隐藏记录。来源内容变化或到期后失效；合成记录仅保留在本次会话。")
+                        .font(.caption).foregroundStyle(.secondary)
                     field("记录身份", record.id)
                     field("Bundle ID", record.bundleID)
                     field("Team ID / 签名", "未知 / 未验证")

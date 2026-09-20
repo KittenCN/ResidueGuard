@@ -12,6 +12,7 @@
 - `./script/test.sh platform`：独立只读采集与进程边界测试。
 - `./script/test.sh quarantine`：同一 ResidueBackup package 内的隔离 target，测试自有临时夹具隔离、恢复冲突、只读恢复及固定实验流程。
 - `./script/test.sh recovery`：只读历史审计模型、完整性与脱敏测试。
+- `./script/test.sh preferences`：保留规则私有配置、原子保存、并发冲突与新沙盒初始化测试。
 - `./script/test.sh audit-import`：真实文件有界读取、链接拒绝与取消测试。
 - `./script/test.sh backup`：只运行备份 target 的源备份、manifest 与篡改拒绝测试。
 - `./script/test.sh transactions`：真实 SQLite 与无副作用事务驱动的集成测试。
@@ -22,9 +23,9 @@
 - `./script/test.sh ui`：Xcode UI 测试，只操作本应用；系统文件选择器端到端用例需显式环境开关，默认跳过。
 - Codex Run 已连接到同一构建脚本，不修改全局 `xcode-select`。
 
-首次打开不会伪装成已扫描系统。主动载入演示后，复选框表示合成 dry-run 目标；预览/确认均不执行主机写操作。权限页面明确显示读取限制和系统设置文字路径。
+首次打开不会伪装成已扫描系统。主动载入演示后，复选框表示合成 dry-run 目标；预览/确认均不执行主机写操作。权限页面明确显示读取限制和系统设置文字路径。记录详情可显式保留30天，保留规则不隐藏记录、不改变存在判断；演示规则不持久保存。
 
-详见 [阶段状态](docs/validation/status.md)、[环境与工具链](docs/validation/environment.md)、[实际测试报告](docs/validation/test-results-2026-09-20.md)。真实写入必须满足后续隔离验证门槛；当前写能力全部关闭。
+详见 [阶段状态](docs/validation/status.md)、[环境与工具链](docs/validation/environment.md)、[实际测试报告](docs/validation/test-results-2026-09-20.md)。真实写入必须满足后续隔离验证门槛；当前系统修改能力全部关闭；显式添加保留规则只保存本应用配置。
 
 ### 产品目标
 在原生 macOS GUI 中，按登录项、后台项、启动服务和权限类别展示已知记录。通过多来源证据识别卸载残留；软件名前有清理复选框；高可信残留以红色和文字标识。实际影响对象全部是高可信残留时，应用内确认一次；只要实际影响到仍安装的软件，就必须确认两次。管理员认证不替代这两次产品确认。
