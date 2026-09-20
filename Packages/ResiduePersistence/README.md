@@ -20,7 +20,7 @@ claim 的 digest 是上层生成的不透明计划摘要；本包不验证摘要
 
 schema v1 通过 SQLite application ID、user version、完整 schema（不允许额外 trigger）和 integrity/foreign-key 检查验证，不隐式迁移。使用 DELETE journal、synchronous FULL、macOS fullfsync，并读取确认配置；首次创建后 fsync 目录。SQLite 出错使实例闭锁，后续操作必须停止。没有清空日志、释放 nonce 或删除历史 API。
 
-安全边界：SQLite 自身仍通过路径打开文件；目录 fd 锚与身份复核不是自定义 SQLite VFS，不能宣称抵御具有完全控制权的同 UID/root 恶意进程、存储介质回滚或真正断电。普通用户目录不可作为特权 helper 的可信 journal。实际接入须选定执行身份拥有的固定根目录，并增加独立进程崩溃/断电和隔离 VM 的执行链测试。只读恢复查询可能由 SQLite 完成本应用数据库自身的 hot-journal 恢复；绝不触碰系统权限数据库。
+安全边界：SQLite 自身仍通过路径打开文件；目录 fd 锚与身份复核不是自定义 SQLite VFS，不能宣称抵御具有完全控制权的同 UID/root 恶意进程、存储介质回滚或真正断电。普通用户目录不可作为特权 helper 的可信 journal。实际接入须选定执行身份拥有的固定根目录，并增加断电和隔离 VM 的执行链测试；已完成的独立进程 SIGKILL 测试见下文。只读恢复查询可能由 SQLite 完成本应用数据库自身的 hot-journal 恢复；绝不触碰系统权限数据库。
 
 ## 已执行验证
 
@@ -33,3 +33,11 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --package-pa
 15 个 Swift Testing 用例通过：重新打开后 prepared/result 保留、计划与 nonce 防重放、失败不消耗其他 ID、双连接竞争 claim、状态顺序、失败/unverified 停止后续、未知版本/损坏/额外 trigger 拒绝、显式首次创建、权限/ACL/符号链接/硬链接/目录替换与实例闭锁。所有写入及 ACL 夹具均在测试自有随机临时目录；没有卸载服务、重置权限、安装 helper 或清理真实软件。
 
 这是宿主上临时文件和系统 SQLite 的包测试，不是 VM mutation 验收或真实断电持久性证明。首次测试暴露临时路径别名和 ACL API 语义问题，修正后通过；无跳过用例。
+
+## 独立进程崩溃验证
+
+同一测试命令现运行 16 个 Swift Testing 测试，其中新增的参数化测试包含 5 个独立 writer / verifier 进程案例：claim、prepared、result、finished 提交后 SIGKILL，以及未提交 SQLite 事务实际刷出脏页后 SIGKILL。writer 明确达到阶段后，测试父进程发 SIGKILL 并核对退出信号；第二个新进程检查恢复记录并拒绝旧 plan ID / nonce。恢复查询前后状态一致，不自动重放 prepared 动作；finished 计划虽不再出现在未完成查询中，重放仍被拒绝。
+
+`JournalCrashProbe` 是测试辅助 executable target，依赖库 API 和系统 SQLite，未列为 package 产品，未接入 GUI 或生产执行。它只接受 `/private/tmp/ResidueJournalCrashTests-*` 自有临时目录，目录与数据库安全性继续由 TransactionJournal 核验。未提交案例使用公开 `sqlite3_db_cacheflush` 并确认 hot journal magic，避免将仅在内存中发生的更新误称为磁盘恢复验证。
+
+2026-09-20 最终运行：16 个测试通过（包括新增 5 个参数案例），无跳过。详细记录见 `docs/validation/journal-crash-results-2026-09-20.md`（仓库根目录）。SIGKILL 不等于真实掉电；没有验证介质故障、磁盘回滚或系统 mutation 原子性。

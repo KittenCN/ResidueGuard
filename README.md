@@ -9,6 +9,8 @@
 - `./script/test.sh core`：使用项目选定 Xcode 的 Swift 工具链测试独立核心，无系统副作用。
 - `./script/build_and_run.sh`：使用项目固定 Xcode 构建并以 `.app` 启动；`--build-only` 只构建，`--verify` 检查启动进程。
 - `./script/test.sh platform`：独立只读采集与进程边界测试。
+- `./script/test.sh backup`：源备份、manifest 与篡改拒绝测试。
+- `./script/test.sh transactions`：真实 SQLite 与无副作用事务驱动的集成测试。
 - `./script/test.sh persistence`：系统 SQLite 持久化日志测试，仅操作测试自有临时目录。
 - `./script/test.sh security`：无副作用的 helper 协议与身份/token 策略测试。
 - `./script/package_preview.sh`：创建本地 Debug 预览压缩包，不是正式发布。

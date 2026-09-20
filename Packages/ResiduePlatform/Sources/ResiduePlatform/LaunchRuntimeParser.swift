@@ -35,6 +35,7 @@ public struct LaunchRuntimeParser: Sendable {
         let supported = osMajor == 27 && osBuild == "26A428" && profile == Self.profile
         if supported {
             reason = "Incomplete or unsuccessful diagnostic capture"
+            if let failure = result.failure { reason += ": " + failure.rawValue }
             if result.failure == nil && !result.outputTruncated && result.exitCode == 0 && result.stderr.isEmpty {
                 reason = "Unrecognized format or conflicting service identity"
                 if let fields = Self.fields(result.stdout, target: expected.target),
@@ -55,7 +56,7 @@ public struct LaunchRuntimeParser: Sendable {
             }
         }
         let known = state != .unknown
-        let coverage = ScanCoverage(providerID: "launchd.runtime", state: supported ? (known ? .completeWithinDeclaredScope : .partial) : .unsupported,
+        let coverage = ScanCoverage(providerID: "launchd.runtime", state: supported ? (result.failure == .cancelled ? .cancelled : (known ? .completeWithinDeclaredScope : .partial)) : .unsupported,
                                     declaredRoots: [expected.target], diagnostics: [reason], userScopes: ["gui/\(expected.userID)"],
                                     osBuild: osBuild, generation: generation, startedAt: observedAt, completedAt: observedAt,
                                     parsedCount: known ? 1 : 0, unparsedCount: known ? 0 : 1,
@@ -66,7 +67,7 @@ public struct LaunchRuntimeParser: Sendable {
                                       sourceArtifact: "/bin/launchctl print \(expected.target)", displayName: expected.label,
                                       declaredAppIDs: [], targetReferences: known ? [expected.sourcePath, expected.program] : [],
                                       rawMetadata: ["stdoutSHA256": digest, "parserProfile": profile, "osBuild": osBuild,
-                                                    "runtimeState": state.rawValue, "exitCode": result.exitCode.map(String.init) ?? "unavailable"],
+                                                    "runtimeState": state.rawValue, "captureFailure": result.failure?.rawValue ?? "none", "exitCode": result.exitCode.map(String.init) ?? "unavailable"],
                                       parseWarnings: known ? [] : [reason])
         return .init(state: state, coverage: coverage, provenance: provenance)
     }
@@ -74,7 +75,7 @@ public struct LaunchRuntimeParser: Sendable {
     private static func fields(_ text: String, target: String) -> [String: String]? {
         let lines = text.components(separatedBy: .newlines).filter { !$0.isEmpty }
         guard lines.first == "\(target) = {", lines.last == "}" else { return nil }
-        let allowed: Set<String> = ["active count", "path", "type", "state", "program", "domain", "asid", "minimum runtime", "exit timeout", "runs", "pid", "immediate reason", "forks", "execs", "initialized", "trampolined", "started suspended", "proxy started suspended", "checked allocations", "checked allocations reason", "checked allocations flags", "last exit code", "spawn type", "jetsam priority", "jetsam memory limit (active)", "jetsam memory limit (inactive)", "jetsamproperties category", "jetsam thread limit", "cpumon", "sanitizer flags", "properties"]
+        let allowed: Set<String> = ["active count", "path", "type", "state", "program", "domain", "asid", "minimum runtime", "exit timeout", "runs", "pid", "immediate reason", "forks", "execs", "initialized", "trampolined", "started suspended", "proxy started suspended", "checked allocations", "checked allocations reason", "checked allocations flags", "last exit code", "spawn type", "jetsam priority", "jetsam memory limit (active)", "jetsam memory limit (inactive)", "jetsamproperties category", "jetsam thread limit", "cpumon", "sanitizer flags", "properties", "job state"]
         let blocks: Set<String> = ["arguments", "inherited environment", "default environment", "environment", "resource coalition", "jetsam coalition"]
         var fields: [String: String] = [:]
         var seenBlocks = Set<String>()
@@ -98,6 +99,12 @@ public struct LaunchRuntimeParser: Sendable {
             }
         }
         guard !inBlock, fields["properties"] != nil, fields["runs"].flatMap(Int.init) != nil else { return nil }
+        // The reboot capture contains this opaque field. Accept only its observed
+        // literal/context, without using it to derive runtime state or cleanup eligibility.
+        if let jobState = fields["job state"] {
+            guard jobState == "uninitialized", fields["state"] == "not running",
+                  fields["active count"] == "0", fields["runs"] == "0", fields["pid"] == nil else { return nil }
+        }
         return fields
     }
 }

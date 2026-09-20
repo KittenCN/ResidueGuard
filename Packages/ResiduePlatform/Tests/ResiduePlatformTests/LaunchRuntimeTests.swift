@@ -52,3 +52,17 @@ private func observe(_ text: String, build: String = "26A428", major: Int = 27, 
         #expect(result.provenance.targetReferences.isEmpty)
     }
 }
+
+@Test func runtimeRebootRegistrationIsObservedWithoutInferringJobStateSemantics() {
+    #expect(observe(runtimeFixtureAfterReboot).state == .registeredNotRunning)
+    let changes = [
+        runtimeFixtureAfterReboot.replacingOccurrences(of: "job state = uninitialized", with: "job state = future"),
+        runtimeFixtureAfterReboot.replacingOccurrences(of: "job state = uninitialized", with: "job state = uninitialized\n\tjob state = uninitialized"),
+        runtimeFixtureAfterReboot.replacingOccurrences(of: "state = not running", with: "state = future"),
+        runtimeFixtureAfterReboot.replacingOccurrences(of: "active count = 0", with: "active count = 1"),
+        runtimeFixtureAfterReboot.replacingOccurrences(of: "runs = 0", with: "runs = 1"),
+        runtimeFixtureAfterReboot.replacingOccurrences(of: "job state = uninitialized", with: "pid = 1038\n\tjob state = uninitialized")
+    ]
+    for text in changes { #expect(observe(text).state == .unknown) }
+    #expect(observe(runtimeFixtureAfterReboot, build: "26A429").state == .unknown)
+}

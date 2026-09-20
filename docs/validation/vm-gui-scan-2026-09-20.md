@@ -23,3 +23,5 @@
 - 客体时钟显示与宿主有时区差异；报告使用宿主日期，未据此推断计划有效期或跨设备时间一致。
 
 苹果官方沙箱授权说明：[Accessing files from the macOS App Sandbox](https://developer.apple.com/documentation/security/accessing-files-from-the-macos-app-sandbox)。目录授权只赋予所选范围；这次修复没有增加任何额外授权。
+
+GUI 回归：`./script/test.sh ui` 实际 11 tests / 0 failures，103.354 秒。新增断言验证不完整覆盖警告；这些自动 UI 用例为合成数据，不能替代上述真实客体目录授权验证。

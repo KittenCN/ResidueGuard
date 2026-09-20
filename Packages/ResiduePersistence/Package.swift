@@ -6,6 +6,7 @@ let package = Package(
     targets: [
         .systemLibrary(name: "CSQLite"),
         .target(name: "ResiduePersistence", dependencies: ["CSQLite"]),
-        .testTarget(name: "ResiduePersistenceTests", dependencies: ["ResiduePersistence", "CSQLite"])
+        .executableTarget(name: "JournalCrashProbe", dependencies: ["ResiduePersistence", "CSQLite"]),
+        .testTarget(name: "ResiduePersistenceTests", dependencies: ["ResiduePersistence", "CSQLite", "JournalCrashProbe"])
     ], swiftLanguageModes: [.v6]
 )

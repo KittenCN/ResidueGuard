@@ -126,3 +126,50 @@ let runtimeFixtureAfterRestore = #"""
 Bad request.
 Could not find service "example.residueguard.fixture.iso01" in domain for user gui: 501
 """#
+
+// Same verified VM build after guest reboot/login; restored plist re-registered.
+let runtimeFixtureAfterReboot = #"""
+gui/501/example.residueguard.fixture.iso01 = {
+	active count = 0
+	path = /Users/fixture-user/Library/LaunchAgents/example.residueguard.fixture.iso01.plist
+	type = LaunchAgent
+	state = not running
+
+	program = /Users/fixture-user/Library/ResidueGuard-VM-ISO01/fixture
+	arguments = {
+		/Users/fixture-user/Library/ResidueGuard-VM-ISO01/fixture
+	}
+
+	inherited environment = {
+		SSH_AUTH_SOCK => /var/run/com.apple.launchd.FIXTURE/Listeners
+	}
+
+	default environment = {
+		PATH => /usr/bin:/bin:/usr/sbin:/sbin
+	}
+
+	environment = {
+		OSLogRateLimit => 64
+		XPC_SERVICE_NAME => example.residueguard.fixture.iso01
+	}
+
+	domain = gui/501 [100002]
+	asid = 100002
+	minimum runtime = 10
+	exit timeout = 5
+	runs = 0
+	last exit code = (never exited)
+
+	spawn type = daemon (3)
+	jetsam priority = 40
+	jetsam memory limit (active) = (unlimited)
+	jetsam memory limit (inactive) = (unlimited)
+	jetsamproperties category = daemon
+	jetsam thread limit = 32
+	cpumon = default
+	job state = uninitialized
+	sanitizer flags = 0x0
+
+	properties = inferred program | needs LWCR update | managed LWCR
+}
+"""#
