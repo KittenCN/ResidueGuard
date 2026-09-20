@@ -5,10 +5,10 @@
 - 原生 SwiftUI App 支持显式目录只读扫描、合成演示、dry-run、脱敏报告、权限引导；新增历史审计报告只读导入页。
 - VM 中修复目录已授权但读取上级目录失败导致零行的问题：同一自有目录实际返回 1 条；目标未授权仍为无法核实，不误标红。
 - Core 50 项、Transactions 6 项通过：修复未验证注册状态仍可完成事务的错误，两层共用结果判断。见[修复证据](transaction-outcome-fix-2026-09-20.md)。
-- Platform 42 项、Persistence 27 项、Backup 40 项通过。日志含 13 个独立进程 SIGKILL 场景（含schema2审计写入与迁移）；VM 固定自有夹具的只读备份及精确 runtime 探针通过。
+- Platform 46 项、Persistence 27 项、Backup 40 项通过。日志含 13 个独立进程 SIGKILL 场景（含schema2审计写入与迁移）；VM 固定自有夹具的只读备份及精确 runtime 探针通过。
 - Quarantine 38 项、Recovery 10 项通过：临时夹具备份核验、同卷不覆盖隔离/恢复和只读恢复检查；审计模型保持内容完整性与来源真实性分离。没有生产构造入口。
 - AuditImport 15 项真实文件测试通过，App 已接入；其后 History UI 4 通过、1 系统 picker 跳过、0 失败。
-- GUI 最新全量结果：18 项中 17 通过、1 显式跳过、0 失败（224.780 秒）。跳过系统 picker 自动输入；随后另行在VM Release实际选择文件并导入显示成功，不能据此改写XCTest结果。新文件读取模块集成的验证见[导入报告](history-report-import-2026-09-20.md)。
+- GUI 最新全量结果：20 项中 19 通过、1 显式跳过、0 失败（251.475 秒）。跳过系统 picker 自动输入；随后另行在VM Release实际选择文件并导入显示成功，不能据此改写XCTest结果。新文件读取模块集成的验证见[导入报告](history-report-import-2026-09-20.md)。
 - 固定自有 VM 隔离/恢复 probe 已实现，Backup 40 + Quarantine 38 项临时文件测试通过；宿主拒绝（exit77）、参数拒绝（exit64）。客体固定正常往返已实际退出0并完成各次核验，见[受限实验上下文](owned-fixture-context-2026-09-20.md)。
 - 本地 Release 已构建并验证双架构签名、只读沙盒与无调试授权；见[签名验证](local-release-signing-2026-09-20.md)。
 - VM 真实 XPC 五场景通过：正确 peer 可通信、错误 client/server 拒绝、同一二进制更正约束后成功，并验证自有进程退出。仍是无特权实验，外部 harness 配置不是生产信任根；未安装 helper。
@@ -26,3 +26,5 @@ schema2完整审计同库绑定及显式迁移已实现，旧nonce保留，旧�
 真实备份审计桥新增身份/内容/元数据/manifest绑定；修复标准Library限制性ACL与hidden父锚点兼容问题后，固定VM往返及前后证据核验exit0，仍未集成持久实验审计。见[证据桥](backup-audit-evidence-2026-09-20.md)。
 
 P2候选归属图与应用实例页已接入，保留多副本/冲突/可能共享线索但不提升存在判断或清理权限；Core新增10项、Platform新增3项、候选图GUI2项通过。见[候选图验证](candidate-ownership-graph-2026-09-20.md)。
+
+BTM独立VM只读探针在5秒与30秒预算下均超时、双流为空，原因未知；产品维持unsupported，未提权或读取私库。见[研究与实测](btm-readonly-research-2026-09-20.md)。启动脚本已按项目可执行文件路径定位进程，实际Debug启动验证通过，见[启动验证](project-launch-verification-2026-09-20.md)。

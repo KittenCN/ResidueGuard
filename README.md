@@ -3,11 +3,13 @@
 
 本仓库包含研发规格、原生 SwiftUI macOS App 工程和独立 Swift 6 核心 Package。当前提供用户明确授权目录内的真实只读启动配置扫描、明确标记的合成演示和 dry-run 计划；不包含可用的真实清理执行器，不申请隐私权限、不安装后台组件。实测与未验证项以 `docs/validation/` 为准。
 
+本地操作步骤见[使用说明](docs/local-user-guide.md)。
+
 ### 开发入口
 
 - `bash script/preflight.sh`：只读环境预检。
 - `./script/test.sh core`：使用项目选定 Xcode 的 Swift 工具链测试独立核心，无系统副作用。
-- `./script/build_and_run.sh`：使用项目固定 Xcode 构建并以 `.app` 启动；`--build-only` 只构建，`--verify` 检查启动进程。
+- `./script/build_and_run.sh`：使用项目固定 Xcode 构建并以 `.app` 启动；`--build-only` 只构建，`--verify` 按本项目可执行文件路径核验启动进程，不误认其他同名构建。
 - `./script/build_and_run.sh --release-build-only`：构建并核验本地 Release；保留只读沙盒，不带调试授权，无需 Developer ID。
 - `./script/test.sh platform`：独立只读采集与进程边界测试。
 - `./script/test.sh quarantine`：同一 ResidueBackup package 内的隔离 target，测试自有临时夹具隔离、恢复冲突、只读恢复及固定实验流程。

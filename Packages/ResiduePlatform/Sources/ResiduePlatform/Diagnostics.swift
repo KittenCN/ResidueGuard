@@ -39,16 +39,16 @@ public struct DiagnosticProcessRunner: Sendable {
     func runTestCommand(path: String, arguments: [String], timeout: TimeInterval, maximumBytes: Int) async -> DiagnosticResult {
         await runCommand(path: path, arguments: arguments, timeout: timeout, maximumBytes: maximumBytes)
     }
-    private func runCommand(path: String, arguments: [String], timeout: TimeInterval, maximumBytes: Int) async -> DiagnosticResult {
+    func runCommand(path: String, arguments: [String], timeout: TimeInterval, maximumBytes: Int, stderrMaximumBytes: Int? = nil) async -> DiagnosticResult {
         let flag = CancellationFlag()
         return await withTaskCancellationHandler {
             if Task.isCancelled { flag.cancel() }
             return await Task.detached(priority: .utility) {
-                Self.capture(path: path, arguments: arguments, timeout: timeout, maximumBytes: maximumBytes, flag: flag)
+                Self.capture(path: path, arguments: arguments, timeout: timeout, maximumBytes: maximumBytes, stderrMaximumBytes: stderrMaximumBytes ?? maximumBytes, flag: flag)
             }.value
         } onCancel: { flag.cancel() }
     }
-    private static func capture(path: String, arguments: [String], timeout: TimeInterval, maximumBytes: Int, flag: CancellationFlag) -> DiagnosticResult {
+    private static func capture(path: String, arguments: [String], timeout: TimeInterval, maximumBytes: Int, stderrMaximumBytes: Int, flag: CancellationFlag) -> DiagnosticResult {
         guard !flag.isCancelled else { return .init(stdout: "", stderr: "", exitCode: nil, failure: .cancelled, outputTruncated: false) }
         let child = Process()
         child.executableURL = URL(fileURLWithPath: path); child.arguments = arguments
@@ -92,7 +92,7 @@ public struct DiagnosticProcessRunner: Sendable {
                 for _ in 0..<16 {
                     let count = read(outputs[index].fileDescriptor, &buffer, buffer.count)
                     if count > 0 {
-                        let room = max(0, maximumBytes - data[index].count)
+                        let room = max(0, (index == 0 ? maximumBytes : stderrMaximumBytes) - data[index].count)
                         data[index].append(contentsOf: buffer.prefix(min(room, count)))
                         if count > room { truncated = true; if failure == nil { failure = .outputLimit } }
                     } else if count == 0 { closed[index] = true; break }
