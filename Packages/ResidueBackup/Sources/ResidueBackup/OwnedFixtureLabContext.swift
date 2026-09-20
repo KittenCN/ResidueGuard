@@ -39,7 +39,8 @@ package final class OwnedFixtureLabContext {
         defer { close(libraryFD) }
         let sourceFD = try labOpenDirectory(parent: libraryFD, name: "LaunchAgents", privateRequired: false)
         defer { close(sourceFD) }
-        let destinationName = "ResidueGuard-VM-VerifiedBackup-" + UUID().uuidString
+        let labID = UUID()
+        let destinationName = "ResidueGuard-VM-VerifiedBackup-" + labID.uuidString
         guard mkdirat(libraryFD, destinationName, 0o700) == 0 else { throw VMLabProbeError.invalidLab }
         let destinationFD = try labOpenDirectory(parent: libraryFD, name: destinationName, privateRequired: true)
         defer { close(destinationFD) }
@@ -73,6 +74,7 @@ package final class OwnedFixtureLabContext {
               after.st_dev == before.st_dev, after.st_ino == before.st_ino,
               after.st_size == before.st_size, after.st_ctimespec.tv_sec == before.st_ctimespec.tv_sec,
               after.st_ctimespec.tv_nsec == before.st_ctimespec.tv_nsec else { throw VMLabProbeError.invalidLab }
+        try store.bindOwnedFixtureAuditRoot(parentFD: libraryFD, labID: labID, home: home)
         return try OwnedFixtureLabContext(sourceFD: sourceFD, labFD: destinationFD, backup: store,
                                           name: name, fingerprint: fingerprint, home: home)
     }
@@ -80,7 +82,7 @@ package final class OwnedFixtureLabContext {
         guard mkdirat(labFD, "quarantine", 0o700) == 0 else { throw VMLabProbeError.invalidLab }
         return try Self.labOpenDirectory(parent: labFD, name: "quarantine", privateRequired: true)
     }
-    private static func labOpenChain(_ path: String) throws -> Int32 {
+    static func labOpenChain(_ path: String) throws -> Int32 {
         var current = open("/", O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
         guard current >= 0 else { throw VMLabProbeError.invalidLab }
         do {

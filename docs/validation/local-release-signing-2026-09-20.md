@@ -18,3 +18,5 @@ Intel仅编译/签名切片验证，未在Intel设备运行。Release进程已�
 `./script/package_local_release.sh` 已实际执行成功：构建 Release、核对能力矩阵中的生产 mutation 关闭、检查双架构签名与只读 entitlement，生成 ZIP 后解包到独占临时目录，再次执行严格签名/授权检查；最后才替换 `dist/ResidueGuard-local-release.zip` 和 `dist/local-release-manifest.json`。临时解包目录退出时清理。清单记录 ZIP SHA-256、源码提交、工作区是否有未提交变更以及未公证/未验证跨机 Gatekeeper 的事实；不上传、不安装或修改信任设置。
 
 这是本机/隔离实验用 ad-hoc Release，当前功能为只读扫描、演示预演、历史摘要导入和显式保留规则。不要求 Developer ID；没有声称可绕过另一台 Mac 的下载信任检查，Intel 仅构建和签名验证。
+
+同一 ZIP 随后在 VirtualBuddy 测试客体中校验 SHA-256、解包并以 `codesign --verify --deep --strict --all-architectures` 通过，再从独立自有路径启动。真实 GUI 显示“本地规则已读取”和空本地规则状态，验证最终取消/父目录读取接入未破坏现有沙盒配置读取。此 VM 验证是本地共享文件传输，不等价于带下载 quarantine 属性的公开分发验收。

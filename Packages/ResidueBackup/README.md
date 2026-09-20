@@ -26,6 +26,21 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --package-pa
 
 `ResidueQuarantine` product/target及其测试已迁入本package，原独立package不再保留。`OwnedFixtureLabContext`和描述符/备份实例只用Swift `package`访问级别共享，不是public API；公开入口只接受零参数固定ISO01实验。通用Backup/Quarantine构造器仍不公开，没有任意路径或fd工厂。
 
-`swift test --package-path Packages/ResidueBackup`运行两个测试target；`script/test.sh backup`只筛选17项备份测试，`script/test.sh quarantine`筛选38项隔离/只读恢复/流程测试。
+`swift test --package-path Packages/ResidueBackup`运行两个测试target；`script/test.sh backup`只筛选32项备份测试，`script/test.sh quarantine`筛选38项隔离/只读恢复/流程测试。
 
 新`ResidueOwnedFixtureVMProbe`构建后由独立VM验收任务运行。它复用同一硬件/用户/固定源/签名验证，另用已验证profile的只读collector要求registeredNotRunning，在备份前、隔离前后、恢复前后观察。它不会bootstrap/bootout/kickstart，也不把未找到服务当作不运行。错误时只输出phase/fileState/backupID并停止，无自动补偿。详见[隔离文档](QUARANTINE.md)。
+
+## package级真实备份审计证据桥
+
+`inspectAuditEvidence(receipt:)`只对已绑定根、且由当前store实际`prepare`签发并记住身份的receipt返回`BackupAuditEvidence`。类型与方法均为package级，证据无public/Decodable构造器，`authorizesMutation`固定false；没有新增恢复、执行或schema写入接口。
+
+返回实际读到的manifest字节SHA256、备份内容SHA256、源fingerprint的sorted-keys JSON SHA256（格式标识`source-fingerprint-json-sorted-keys-v1`）、backupID/planID和受限根定位。元数据hash包含源fingerprint全部字段及xattr，不是“元数据已经恢复”的声明。固定VM locator由已验证Context生成labUUID，绑定父目录/根目录device+inode和owner；检查时再次核验固定父路径、父fd和根名称。临时测试使用独立`temporaryFixture`命名空间。
+
+`prepare`在根已绑定时记住备份子目录、manifest和内容文件的身份/指纹，检查桥拒绝内容相同但inode替换。每实例最多保留64份签发记录；新prepare超限拒绝，不删除旧备份。二次锚定读取与根复核仍不是原子跨文件快照。根内新增无关quarantine子目录不会因目录ctime改变误拒绝，但根身份、权限或名称被替换会拒绝。
+
+证据只是新鲜的备份观察，既不验证源当前位置/运行服务，也不验证计划有效期/用户确认。包访问级别是代码封装边界，不是抵御同UID完全控制的认证。重启后新store即使能读取并verify原manifest，也不能签发此进程内证据；历史重建仍需要独立受信持久绑定设计，不能把导入JSON当作原始签发。
+
+新增15项临时夹具测试后，Backup32 + Quarantine38通过。本轮未执行VM，未把该证据桥接入Persistence/Core。专项记录见 `docs/validation/backup-audit-evidence-2026-09-20.md`。
+
+审计父锚点与备份对象使用不同 ACL 策略：标准 Library 的非继承 `deny delete` 可接受；allow、其他 deny 权限或继承 entry 被拒绝。备份根和备份文件仍完全拒绝 ACL；代码不会为了通过检查修改真实 Library ACL。
+父锚点仅允许 Finder 的 UF_HIDDEN 标志，其他 flags 拒绝；备份根和备份文件仍要求 flags=0。临时目录回归覆盖父目录 hidden + deny delete 的标准组合，不修改实际 Library。
