@@ -37,6 +37,9 @@ public struct ApplicationInstance: Sendable {
     public let fileIdentity: String
     public let volumeIdentity: String
     public let signingStatus: String
+    public let teamID: String?
+    public let designatedRequirement: String?
+    public let signingDiagnostic: String
     public let observedAt: Date
 }
 public struct ScanSnapshot: Sendable {

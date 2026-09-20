@@ -4,8 +4,8 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("当前阶段") {
-                LabeledContent("模式", value: "P1 · 只读与合成预演")
-                LabeledContent("真实扫描根目录", value: "未启用")
+                LabeledContent("模式", value: "只读审计与合成预演")
+                LabeledContent("真实扫描根目录", value: "每次手动授权，限定来源")
                 LabeledContent("持久化日志 / 备份", value: "未启用")
             }
             Section("自身后台组件") {

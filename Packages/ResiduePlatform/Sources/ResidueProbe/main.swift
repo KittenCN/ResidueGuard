@@ -14,6 +14,9 @@ import ResiduePlatform
             // Deliberately exclude roots, record identities, raw payloads and error paths.
             print("provider=\(source.providerID) state=\(source.state.rawValue) parsed=\(source.parsedCount) unparsed=\(source.unparsedCount) errors=\(source.errors.count) skipped=\(source.skippedAreas.count)")
         }
+        for status in Set(snapshot.applications.map(\.signingStatus)).sorted() {
+            print("signingStatus=\(status) count=\(snapshot.applications.filter { $0.signingStatus == status }.count)")
+        }
         let red = snapshot.rows.filter { $0.presence.rawValue == "highConfidenceOrphan" }.count
         print("highConfidenceOrphans=\(red)")
     }

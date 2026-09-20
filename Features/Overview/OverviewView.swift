@@ -3,6 +3,9 @@ import ResidueCore
 
 struct OverviewView: View {
     let store: WorkspaceStore
+    @State private var report: AuditReport?
+    @State private var showsReport = false
+    @State private var reportLoading = false
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -39,6 +42,21 @@ struct OverviewView: View {
                         }
                     }
                 }
+                Button("查看脱敏报告（JSON / CSV）") {
+                    let entries = store.records.compactMap { row in row.provenance.map { ReportEntry(source: $0, presence: row.presence) } }
+                    let coverage = store.coverage
+                    let origin: ReportDataOrigin = store.isSyntheticScan ? .synthetic : .observedReadOnly
+                    reportLoading = true
+                    Task {
+                        report = await Task.detached(priority: .utility) {
+                            AuditReport.make(entries: entries, coverage: coverage, dataOrigin: origin)
+                        }.value
+                        reportLoading = false; showsReport = true
+                    }
+                }.disabled(!store.hasSnapshot || store.isDemo || store.isScanning || reportLoading)
+                    .accessibilityIdentifier("report.preview")
+                Text("报告默认移除软件名称、标识和路径；不包含原始权限记录或可执行指令。仅在窗口中展示，可手动复制。")
+                    .font(.caption).foregroundStyle(.secondary)
                 Text(store.isSyntheticScan && !store.isDemo ? "合成测试来源覆盖（未读取主机）" : "真实来源覆盖").font(.title2)
                 ForEach(Array(store.coverage.enumerated()), id: \.offset) { _, coverage in
                     GroupBox {
@@ -69,6 +87,7 @@ struct OverviewView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }.padding(24)
         }
+        .sheet(isPresented: $showsReport) { if let report { ReportPreviewView(report: report) } }
     }
     private var demoCoverage: [ScanCoverage] {
         [
@@ -95,5 +114,29 @@ private extension CoverageState {
         case .failed: "失败"
         case .cancelled: "取消"
         }
+    }
+}
+
+private struct ReportPreviewView: View {
+    let report: AuditReport
+    @Environment(\.dismiss) private var dismiss
+    @State private var format = "JSON"
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("脱敏只读报告").font(.title2)
+            Text(report.dataOrigin == .synthetic ? "合成测试数据，非本机观察" : "只包含本次声明范围内的观察，不能用于执行清理")
+            Picker("格式", selection: $format) { Text("JSON").tag("JSON"); Text("CSV").tag("CSV") }.pickerStyle(.segmented)
+            ScrollView([.vertical, .horizontal]) {
+                Text(content).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                    .accessibilityIdentifier("report.content")
+                    .accessibilityLabel("脱敏报告内容").accessibilityValue(content)
+            }
+            HStack { Text("可选择文字后复制；软件身份与路径默认省略。").font(.caption); Spacer(); Button("关闭") { dismiss() } }
+        }.padding(24).frame(width: 720, height: 520)
+    }
+    private var content: String {
+        if format == "CSV" { return report.csv() }
+        do { return String(decoding: try report.json(), as: UTF8.self) }
+        catch { return "报告编码失败；未生成输出。" }
     }
 }

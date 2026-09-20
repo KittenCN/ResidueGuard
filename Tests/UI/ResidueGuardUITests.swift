@@ -112,4 +112,30 @@ final class ResidueGuardUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["synthetic.scan · 取消"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["scan.start"].isEnabled)
     }
+
+    func testPermissionRelationshipGuidanceDoesNotOfferReset() {
+        app.staticTexts["自动化"].firstMatch.click()
+        XCTAssertTrue(app.staticTexts["permission.unavailable"].exists)
+        XCTAssertTrue(app.staticTexts["自动化保留调用者 → 被控制者关系。若底层能力影响调用者的全部关系，必须完整展开影响集合并重新批准；影响不明时阻断。"].exists)
+        XCTAssertTrue(app.staticTexts["完整清单：不可读取；精确重置：禁用；后置验证：未验证。"].exists)
+        XCTAssertFalse(app.buttons["重置"].exists)
+    }
+
+    func testRedactedReportMarksSyntheticScanAndOmitsIdentity() {
+        app.terminate()
+        app.launchArguments = ["--ui-synthetic-scan"]
+        app.launch()
+        app.buttons["scan.start"].click()
+        XCTAssertTrue(app.buttons["report.preview"].waitForExistence(timeout: 5))
+        let preview = app.buttons["report.preview"]
+        let enabled = NSPredicate(format: "enabled == true")
+        expectation(for: enabled, evaluatedWith: preview)
+        waitForExpectations(timeout: 5)
+        preview.click()
+        XCTAssertTrue(app.staticTexts["合成测试数据，非本机观察"].waitForExistence(timeout: 3))
+        let content = (app.staticTexts["report.content"].value as? String ?? "")
+        XCTAssertTrue(content.contains("synthetic"))
+        XCTAssertFalse(content.contains("/Synthetic/"))
+        XCTAssertFalse(content.contains("fixture-readonly"))
+    }
 }

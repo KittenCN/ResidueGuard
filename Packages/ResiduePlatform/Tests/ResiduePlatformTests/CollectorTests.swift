@@ -104,7 +104,7 @@ private func directory() throws -> URL {
     let snapshot = await ScanService(configuration: ScanConfiguration(launchRoots: [], applicationRoots: [root])).scan()
     #expect(snapshot.applications.count == 2)
     #expect(Set(snapshot.applications.map(\.fileIdentity)).count == 2)
-    #expect(snapshot.applications.allSatisfy { $0.signingStatus == "unverified" })
+    #expect(snapshot.applications.allSatisfy { $0.signingStatus == "unavailable" })
     #expect(snapshot.coverage[0].state == .partial)
 }
 @Test func rootTruncationIsExplicit() async {

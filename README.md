@@ -9,6 +9,9 @@
 - `./script/test.sh core`：使用项目选定 Xcode 的 Swift 工具链测试独立核心，无系统副作用。
 - `./script/build_and_run.sh`：使用项目固定 Xcode 构建并以 `.app` 启动；`--build-only` 只构建，`--verify` 检查启动进程。
 - `./script/test.sh platform`：独立只读采集与进程边界测试。
+- `./script/test.sh security`：无副作用的 helper 协议与身份/token 策略测试。
+- `./script/package_preview.sh`：创建本地 Debug 预览压缩包，不是正式发布。
+- `./script/release_check.sh`：只读发布门禁检查，当前预期阻断。
 - `./script/test.sh ui`：Xcode UI 测试，只操作本应用的合成演示。
 - Codex Run 已连接到同一构建脚本，不修改全局 `xcode-select`。
 
@@ -55,3 +58,5 @@
 所有来源标号 `[Sxx]` 在 `docs/08-sources-and-decisions.md` 中解析。
 
 最新只读范围与限制见 [P2 验证记录](docs/validation/p2-results-2026-09-20.md)，整体剩余门槛见 [项目进度](docs/validation/project-progress.md)。
+
+完整使用步骤见 [只读版本使用说明](docs/user-guide.md)。本轮综合证据见 [开发验证报告](docs/validation/final-development-results-2026-09-20.md)。

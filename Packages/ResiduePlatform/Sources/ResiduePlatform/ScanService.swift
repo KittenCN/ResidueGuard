@@ -24,6 +24,7 @@ public actor ScanService {
         var knownApps: Set<String> = []
         var applications: [ApplicationInstance] = []
         var totalBytes = 0
+        var signatureCount = 0
         for root in config.applicationRoots {
             var parsed = 0, failures: [String] = [], skipped: [String] = []
             do {
@@ -43,12 +44,15 @@ public actor ScanService {
                         let fd = try SafeFiles.descriptor(appURL, directory: true); defer { close(fd) }
                         var identity = stat()
                         guard fstat(fd, &identity) == 0 else { throw SafeFiles.Failure.posix(errno) }
-                        applications.append(ApplicationInstance(bundleID: id, path: appURL.path, fileIdentity: String(identity.st_ino), volumeIdentity: String(identity.st_dev), signingStatus: "unverified", observedAt: start))
+                        let signing: CodeIdentityObservation?
+                        if signatureCount < 32 { signing = CodeIdentityInspector().inspect(application: appURL); signatureCount += 1 }
+                        else { signing = nil; if !skipped.contains("signatureInspectionLimit") { skipped.append("signatureInspectionLimit") } }
+                        applications.append(ApplicationInstance(bundleID: id, path: appURL.path, fileIdentity: String(identity.st_ino), volumeIdentity: String(identity.st_dev), signingStatus: signing?.status.rawValue ?? "unverified", teamID: signing?.teamID, designatedRequirement: signing?.designatedRequirement, signingDiagnostic: signing?.diagnostic ?? "signatureInspectionLimit", observedAt: start))
                         knownApps.insert(id); parsed += 1
                     } catch { failures.append(SafeFiles.diagnostic(error)) }
                 }
             } catch { failures.append(SafeFiles.diagnostic(error)) }
-            coverage.append(ScanCoverage(providerID: "applications.index", state: Task.isCancelled ? .cancelled : .partial, declaredRoots: [root.path], diagnostics: ["Top-level bundles only; signature, alternate installations and runtime not verified. Never deletion evidence."], osBuild: os, generation: generation, startedAt: start, completedAt: Date(), parsedCount: parsed, unparsedCount: failures.count, skippedAreas: skipped + ["nestedBundles", "codeSignature", "otherVolumes"], errors: failures))
+            coverage.append(ScanCoverage(providerID: "applications.index", state: Task.isCancelled ? .cancelled : .partial, declaredRoots: [root.path], diagnostics: ["Top-level bundles only; signature validity, alternate installations and runtime not verified. Never deletion evidence."], osBuild: os, generation: generation, startedAt: start, completedAt: Date(), parsedCount: parsed, unparsedCount: failures.count, skippedAreas: skipped + ["nestedBundles", "signatureValidity", "otherVolumes"], errors: failures))
         }
         for root in config.launchRoots {
             var parsed = 0, failures: [String] = [], skipped: [String] = [], denied = false

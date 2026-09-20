@@ -13,8 +13,11 @@ case "${1:-core}" in
  platform)
   /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResiduePlatform"
   ;;
+ security)
+  /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResidueSecurity"
+  ;;
  ui)
   /usr/bin/xcodebuild -project "$ROOT_DIR/ResidueGuard.xcodeproj" -scheme ResidueGuard -destination 'platform=macOS' -derivedDataPath "$ROOT_DIR/.build-xcode" CODE_SIGN_IDENTITY=- test
   ;;
- *) echo 'usage: script/test.sh [core|platform|ui]' >&2; exit 2 ;;
+ *) echo 'usage: script/test.sh [core|platform|security|ui]' >&2; exit 2 ;;
 esac
