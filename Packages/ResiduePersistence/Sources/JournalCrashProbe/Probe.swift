@@ -8,6 +8,7 @@ import ResiduePersistence
     static func main() async throws {
         let args = CommandLine.arguments
         #if DEBUG
+        if args.count == 4, args[2].hasPrefix("owned-") { try await OwnedExperimentCrashProbe.run(args); return }
         if args.count == 4, args[2].hasPrefix("audit-") || args.count == 4 && args[2].hasPrefix("migration-") {
             try await AuditedCrashProbe.run(args); return
         }

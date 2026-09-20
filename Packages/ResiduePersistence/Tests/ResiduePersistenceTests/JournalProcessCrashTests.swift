@@ -39,7 +39,8 @@ private let crashStages: [String] = {
     let legacy = ["claim", "prepared", "result", "finished", "uncommitted"]
     #if DEBUG
     return legacy + ["audit-claim", "audit-prepared", "audit-result", "audit-finished",
-                     "audit-prepare-beforecommit", "audit-result-beforecommit", "migration-beforecommit", "migration-aftercommit"]
+                     "audit-prepare-beforecommit", "audit-result-beforecommit", "migration-beforecommit", "migration-aftercommit", "owned-created", "owned-prepared", "owned-result",
+                     "owned-prepare-beforecommit", "owned-result-beforecommit"]
     #else
     return legacy
     #endif
