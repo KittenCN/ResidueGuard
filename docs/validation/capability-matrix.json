@@ -42,7 +42,14 @@
     "runtime-collector-2026-09-20.md",
     "journal-crash-results-2026-09-20.md",
     "backup-results-2026-09-20.md",
-    "persistent-transaction-bridge-2026-09-20.md"
+    "persistent-transaction-bridge-2026-09-20.md",
+    "coverage-aware-snapshot-diff-2026-09-20.md",
+    "owned-fixture-bootout-results-2026-09-20.md",
+    "owned-fixture-bootout-audit-reader-2026-09-20.md",
+    "source-identity-race-research-2026-09-20.md",
+    "helper-wire-codec-2026-09-20.md",
+    "status-wire-xpc-experiment-2026-09-20.md",
+    "large-scan-gui-fixture-2026-09-20.md"
   ],
   "providers": [
     {

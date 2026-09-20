@@ -26,6 +26,8 @@ struct OverviewView: View {
                 } else {
                     if store.hasSnapshot {
                         Text("本次返回 \(store.records.count) 条记录；真实可执行动作：0。")
+                            .accessibilityIdentifier("overview.recordCount")
+                            .accessibilityValue("\(store.records.count)条记录")
                         if store.coverage.contains(where: { $0.state != .completeWithinDeclaredScope }) {
                             Label("存在未读取或未完整覆盖的来源；记录总量未知，请查看下方来源覆盖。", systemImage: "exclamationmark.triangle")
                                 .foregroundStyle(.orange).accessibilityIdentifier("scan.incompleteCoverage")

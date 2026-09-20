@@ -6,6 +6,10 @@ extension WorkspaceStore {
     static func production() -> WorkspaceStore {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("--ui-synthetic-scan") {
+            if ProcessInfo.processInfo.arguments.contains("--ui-large-scan-fixture") {
+                let sequence = SyntheticLargeScanSequence()
+                return WorkspaceStore(scanner: WorkspaceScanner { _ in await sequence.next() }, syntheticScan: true)
+            }
             if ProcessInfo.processInfo.arguments.contains("--ui-snapshot-fixture") {
                 let sequence = SyntheticComparisonSequence()
                 let store = WorkspaceStore(scanner: WorkspaceScanner { configuration in await sequence.next(configuration) }, syntheticScan: true)
@@ -60,6 +64,39 @@ private actor SyntheticComparisonSequence {
                 declaredRoots: [root.url.path], userScopes: ["currentUser"], osBuild: "synthetic-tests",
                 generation: generation, parsedCount: root.url.path == "/Synthetic/LaunchAgents" ? rows.count : 0)
         })
+    }
+}
+#endif
+
+#if DEBUG
+/// In-memory capacity fixture. No filesystem or process collection is invoked.
+private actor SyntheticLargeScanSequence {
+    private var count = 0
+    func next() async -> ScanSnapshot {
+        count += 1
+        // The second request provides a deterministic cancellation interaction,
+        // not a claim that generating 10,000 records takes this long.
+        if count > 1 { try? await Task.sleep(for: .seconds(30)) }
+        let generation = UUID().uuidString, now = Date()
+        let capability = CapabilityDescriptor(profileID: "synthetic-large-readonly", state: .readOnly,
+            testedOSBuilds: [], reason: "合成容量测试，不读取主机，不赋予执行能力")
+        var rows: [ScanRow] = []
+        rows.reserveCapacity(10000)
+        for index in 0..<10000 {
+            if Task.isCancelled { break }
+            let suffix = String(format: "%05d", index)
+            let name = index == 9999 ? "合成容量样本 needle-09999" : "合成容量样本 " + suffix
+            let record = SourceRecord(id: .init(providerID: "synthetic.scan", scope: "currentUser", nativeIdentity: "large-" + suffix),
+                category: "launchConfiguration", observedAt: now, generation: generation,
+                sourceArtifact: "/Synthetic/LaunchAgents/large-" + suffix + ".plist", displayName: name,
+                declaredAppIDs: [], targetReferences: [], rawMetadata: ["fixture": "synthetic-not-user-data"], parseWarnings: [])
+            rows.append(.init(record: record, presence: .unknown, capability: capability, evidence: ["合成容量测试"] ))
+        }
+        return .init(generation: generation, observedAt: now, rows: rows, coverage: [
+            .init(providerID: "synthetic.scan", state: Task.isCancelled ? .cancelled : .partial,
+                declaredRoots: ["/Synthetic/LaunchAgents"], diagnostics: ["10000条内存合成容量夹具；未读取主机；取消结果不代表没有记录"],
+                userScopes: ["currentUser"], osBuild: "synthetic-tests", generation: generation, parsedCount: rows.count)
+        ])
     }
 }
 #endif

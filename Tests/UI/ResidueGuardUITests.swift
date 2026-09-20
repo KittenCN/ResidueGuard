@@ -195,3 +195,66 @@ final class ResidueGuardUITests: XCTestCase {
     }
 
 }
+
+/// Functional capacity acceptance. Timing includes automation and is not a 200ms SLA.
+@MainActor
+final class LargeSyntheticScanUITests: XCTestCase {
+    private var app: XCUIApplication!
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launchArguments = ["--ui-synthetic-scan", "--ui-large-scan-fixture"]
+        app.launch()
+    }
+    override func tearDownWithError() throws { app.terminate() }
+    private func navigate(_ page: String) {
+        let sidebar = app.descendants(matching: .any)["workspace.sidebar"].firstMatch
+        let target = app.staticTexts["page.\(page)"]
+        XCTAssertTrue(sidebar.waitForExistence(timeout: 10))
+        XCTAssertTrue(target.waitForExistence(timeout: 10))
+        for _ in 0..<8 {
+            if target.isHittable { break }
+            sidebar.scroll(byDeltaX: 0, deltaY: 600)
+        }
+        XCTAssertTrue(target.isHittable)
+        target.click()
+    }
+    private func record(_ suffix: String) -> XCUIElement {
+        let id = ["synthetic.scan", "currentUser", "large-" + suffix].map { "\($0.utf8.count):\($0)" }.joined()
+        return app.staticTexts["record." + id]
+    }
+    func testTenThousandRowsCanFilterLastRecord() throws {
+        // Capture real control geometry with a small table. Do not snapshot the
+        // whole 10,000-row accessibility tree just to address a known text field.
+        app.buttons["demo.load"].click()
+        navigate("用户启动代理")
+        let search = app.textFields["records.search"].firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 15))
+        let window = app.windows.firstMatch
+        let windowFrame = window.frame, searchFrame = search.frame
+        func checkedPoint(_ frame: CGRect) throws -> XCUICoordinate {
+            let values = [windowFrame.minX, windowFrame.minY, windowFrame.width, windowFrame.height,
+                          frame.minX, frame.minY, frame.width, frame.height, frame.midX, frame.midY]
+            guard values.allSatisfy({ $0.isFinite }), !windowFrame.isEmpty, !frame.isEmpty,
+                  windowFrame.contains(CGPoint(x: frame.midX, y: frame.midY)) else {
+                XCTFail("Control coordinate must be finite and inside the observed app window")
+                throw NSError(domain: "CapacityUITestGeometry", code: 1)
+            }
+            return window.coordinate(withNormalizedOffset: .zero).withOffset(
+                CGVector(dx: frame.midX - windowFrame.minX, dy: frame.midY - windowFrame.minY))
+        }
+        let searchPoint = try checkedPoint(searchFrame)
+        navigate("总览")
+        app.buttons["scan.start"].click()
+        let total = app.staticTexts["overview.recordCount"]
+        XCTAssertTrue(total.waitForExistence(timeout: 30))
+        XCTAssertEqual((total.value as? String)?.filter(\.isNumber), "10000")
+        navigate("用户启动代理")
+        searchPoint.click(); window.typeText("needle-09999")
+        XCTAssertTrue(record("09999").waitForExistence(timeout: 15))
+        XCTAssertFalse(record("00000").exists)
+        XCTAssertEqual(search.value as? String, "needle-09999")
+        XCTAssertFalse(app.buttons["review.open"].isEnabled)
+
+    }
+}
