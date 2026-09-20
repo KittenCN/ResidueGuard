@@ -8,6 +8,7 @@ let package = Package(
         .executable(name: "ResidueBackupVMProbe", targets: ["ResidueBackupVMProbe"]),
         .executable(name: "ResidueOwnedFixtureVMProbe", targets: ["ResidueOwnedFixtureVMProbe"]),
         .executable(name: "ResidueOwnedFixtureAuditProbe", targets: ["ResidueOwnedFixtureAuditProbe"]),
+        .executable(name: "ResidueOwnedFixtureBootoutAuditProbe", targets: ["ResidueOwnedFixtureBootoutAuditProbe"]),
         .executable(name: "ResidueOwnedFixtureBootoutProbe", targets: ["ResidueOwnedFixtureBootoutProbe"]),
         .executable(name: "ResidueOwnedFixtureCrashProbe", targets: ["ResidueOwnedFixtureCrashProbe"])
     ],
@@ -18,6 +19,7 @@ let package = Package(
         .executableTarget(name: "ResidueBackupVMProbe", dependencies: ["ResidueBackup"]),
         .executableTarget(name: "ResidueOwnedFixtureVMProbe", dependencies: ["ResidueQuarantine", "ResidueBackup"]),
         .executableTarget(name: "ResidueOwnedFixtureAuditProbe", dependencies: ["ResidueQuarantine", "ResidueBackup"]),
+        .executableTarget(name: "ResidueOwnedFixtureBootoutAuditProbe", dependencies: ["ResidueQuarantine"]),
         .executableTarget(name: "ResidueOwnedFixtureBootoutProbe", dependencies: ["ResidueQuarantine"]),
         .executableTarget(name: "ResidueOwnedFixtureCrashProbe", dependencies: ["ResidueQuarantine"]),
         .testTarget(name: "ResidueBackupTests", dependencies: ["ResidueBackup"]),
