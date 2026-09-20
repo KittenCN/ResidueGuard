@@ -9,6 +9,7 @@
 - `./script/test.sh core`：使用项目选定 Xcode 的 Swift 工具链测试独立核心，无系统副作用。
 - `./script/build_and_run.sh`：使用项目固定 Xcode 构建并以 `.app` 启动；`--build-only` 只构建，`--verify` 检查启动进程。
 - `./script/test.sh platform`：独立只读采集与进程边界测试。
+- `./script/test.sh persistence`：系统 SQLite 持久化日志测试，仅操作测试自有临时目录。
 - `./script/test.sh security`：无副作用的 helper 协议与身份/token 策略测试。
 - `./script/package_preview.sh`：创建本地 Debug 预览压缩包，不是正式发布。
 - `./script/release_check.sh`：只读发布门禁检查，当前预期阻断。
@@ -60,3 +61,5 @@
 最新只读范围与限制见 [P2 验证记录](docs/validation/p2-results-2026-09-20.md)，整体剩余门槛见 [项目进度](docs/validation/project-progress.md)。
 
 完整使用步骤见 [只读版本使用说明](docs/user-guide.md)。本轮综合证据见 [开发验证报告](docs/validation/final-development-results-2026-09-20.md)。
+
+当前以[本地开发验收范围](docs/validation/local-development-scope.md)为准：暂不推进 App Store、Developer ID 或公证发布；这些不是只读功能和隔离测试的开发前置条件。

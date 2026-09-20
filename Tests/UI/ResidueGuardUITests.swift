@@ -95,6 +95,7 @@ final class ResidueGuardUITests: XCTestCase {
         app.buttons["scan.start"].click()
         XCTAssertTrue(app.otherElements["coverage.synthetic.scan"].waitForExistence(timeout: 5) || app.staticTexts["synthetic.scan · 部分"].exists)
         XCTAssertTrue(app.staticTexts["测试注入 · 合成扫描结果，非本机数据"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["scan.incompleteCoverage"].firstMatch.exists)
         app.staticTexts["用户启动代理"].firstMatch.click()
         let checkbox = app.checkBoxes.matching(NSPredicate(format: "identifier BEGINSWITH %@", "select.")).firstMatch
         XCTAssertTrue(checkbox.waitForExistence(timeout: 3))

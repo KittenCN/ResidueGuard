@@ -25,7 +25,11 @@ struct OverviewView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
                     if store.hasSnapshot {
-                        Text("已读取 \(store.records.count) 条记录；真实可执行动作：0。")
+                        Text("本次返回 \(store.records.count) 条记录；真实可执行动作：0。")
+                        if store.coverage.contains(where: { $0.state != .completeWithinDeclaredScope }) {
+                            Label("存在未读取或未完整覆盖的来源；记录总量未知，请查看下方来源覆盖。", systemImage: "exclamationmark.triangle")
+                                .foregroundStyle(.orange).accessibilityIdentifier("scan.incompleteCoverage")
+                        }
                         Text("扫描时间：\(store.loadedAt?.formatted() ?? "未知")")
                             .font(.caption)
                     } else { Text(store.isScanning ? "扫描进行中；数量尚未确定。" : "扫描状态：未运行。记录数量未知。请主动选择目录后扫描。") }

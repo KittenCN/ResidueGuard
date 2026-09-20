@@ -1,7 +1,7 @@
 import Foundation
 import Darwin
 
-/// Traverses every path component using directory descriptors and O_NOFOLLOW.
+/// Opens only the requested object; kernel O_NOFOLLOW_ANY rejects every symlink component.
 /// No plist-supplied executable is ever launched, and no special file is read.
 enum SafeFiles {
     enum Failure: Error { case invalidPath, posix(Int32), notRegular, tooLarge, changed }
@@ -9,16 +9,12 @@ enum SafeFiles {
         guard url.isFileURL, allowedUserPath(url.path) else { throw Failure.invalidPath }
         let parts = url.path.split(separator: "/").map(String.init)
         guard !parts.contains("..") else { throw Failure.invalidPath }
-        var fd = open("/", O_RDONLY | O_DIRECTORY | O_CLOEXEC)
+        // The selected-directory sandbox grant does not authorize enumerating
+        // its ancestors. Ask the kernel to reject links across the whole path,
+        // opening only the requested object instead of reading each ancestor.
+        let flags = O_RDONLY | O_NOFOLLOW_ANY | O_CLOEXEC | O_NONBLOCK | (directory ? O_DIRECTORY : 0)
+        let fd = open(url.path, flags)
         guard fd >= 0 else { throw Failure.posix(errno) }
-        for (index, part) in parts.enumerated() {
-            let flags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK | ((index < parts.count - 1 || directory) ? O_DIRECTORY : 0)
-            let next = openat(fd, part, flags)
-            let code = errno
-            close(fd)
-            guard next >= 0 else { throw Failure.posix(code) }
-            fd = next
-        }
         return fd
     }
     static func read(_ url: URL, limit: Int) throws -> Data {
