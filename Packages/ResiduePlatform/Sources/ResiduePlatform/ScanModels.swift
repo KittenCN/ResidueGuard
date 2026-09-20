@@ -23,13 +23,16 @@ public struct ScanConfiguration: Sendable {
         return Self(launchRoots: [ScanRoot(url: home.appendingPathComponent("Library/LaunchAgents"), scope: "currentUser"), ScanRoot(url: URL(fileURLWithPath: "/Library/LaunchAgents"), scope: "sharedAgents"), ScanRoot(url: URL(fileURLWithPath: "/Library/LaunchDaemons"), scope: "systemDaemons")], applicationRoots: [URL(fileURLWithPath: "/Applications"), home.appendingPathComponent("Applications")])
     }
 }
+public enum DirectTargetObservation: Sendable { case unverified, executablePresent, missing }
+
 public struct ScanRow: Sendable, Identifiable {
     public var id: RecordIdentity { record.id }
     public let record: SourceRecord
     public let presence: PresenceState
     public let capability: CapabilityDescriptor
     public let evidence: [String]
-    public init(record: SourceRecord, presence: PresenceState, capability: CapabilityDescriptor, evidence: [String]) { self.record = record; self.presence = presence; self.capability = capability; self.evidence = evidence }
+    public let directTargetObservation: DirectTargetObservation
+    public init(record: SourceRecord, presence: PresenceState, capability: CapabilityDescriptor, evidence: [String], directTargetObservation: DirectTargetObservation = .unverified) { self.record = record; self.presence = presence; self.capability = capability; self.evidence = evidence; self.directTargetObservation = directTargetObservation }
 }
 public struct ApplicationInstance: Sendable {
     public let generation: String

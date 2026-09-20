@@ -86,6 +86,7 @@ public actor ScanService {
                 if Task.isCancelled { break }
                 var evidence = ["Source plist read with bounded no-symlink traversal", "No runtime or ownership-complete verification"]
                 var state: PresenceState = .unknown
+                var directTargetObservation: DirectTargetObservation = .unverified
                 let duplicate = (labels[record.displayName]?.count ?? 0) > 1
                 if duplicate { evidence.append("duplicateLabel") }
                 if !record.parseWarnings.isEmpty { evidence.append(contentsOf: record.parseWarnings) }
@@ -97,15 +98,15 @@ public actor ScanService {
                         do {
                             let fd = try SafeFiles.descriptor(URL(fileURLWithPath: path)); defer { close(fd) }
                             var info = stat()
-                            if fstat(fd, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG, (info.st_mode & 0o111) != 0 { state = .present; evidence.append("directExecutablePresent; runtimeNotVerified") }
+                            if fstat(fd, &info) == 0, (info.st_mode & S_IFMT) == S_IFREG, (info.st_mode & 0o111) != 0 { state = .present; directTargetObservation = .executablePresent; evidence.append("directExecutablePresent; runtimeNotVerified") }
                         } catch SafeFiles.Failure.posix(let code) {
                             if code == EACCES || code == EPERM { state = .permissionDenied }
-                            else if code == ENOENT { state = .suspectedOrphan }
+                            else if code == ENOENT { state = .suspectedOrphan; directTargetObservation = .missing }
                             evidence.append("targetPOSIX \(code); absenceNotProofOfRemoval")
                         } catch { evidence.append(SafeFiles.diagnostic(error)) }
                     }
                 }
-                rows.append(ScanRow(record: record, presence: state, capability: CapabilityDescriptor(profileID: "launch-plist-readonly-v1", state: .readOnly, testedOSBuilds: [], reason: "只读文件观察；运行时、签名、影响范围及清理能力尚未验证", operations: [.enumerate: .readOnly, .readStatus: .readOnly, .removeRegistration: .blockedByPolicy, .resetPermission: .blockedByPolicy, .restoreConfiguration: .blockedByPolicy]), evidence: evidence))
+                rows.append(ScanRow(record: record, presence: state, capability: CapabilityDescriptor(profileID: "launch-plist-readonly-v1", state: .readOnly, testedOSBuilds: [], reason: "只读文件观察；运行时、签名、影响范围及清理能力尚未验证", operations: [.enumerate: .readOnly, .readStatus: .readOnly, .removeRegistration: .blockedByPolicy, .resetPermission: .blockedByPolicy, .restoreConfiguration: .blockedByPolicy]), evidence: evidence, directTargetObservation: directTargetObservation))
             }
             coverage.append(ScanCoverage(providerID: "launchd.configuration", state: Task.isCancelled ? .cancelled : (denied ? .permissionDenied : (failures.isEmpty && skipped.isEmpty ? .completeWithinDeclaredScope : .partial)), declaredRoots: [root.url.path], diagnostics: ["Only immediate plist files; configuration observation does not enumerate runtime registrations."], userScopes: [root.scope], osBuild: os, generation: generation, startedAt: start, completedAt: Date(), parsedCount: parsed, unparsedCount: failures.count, skippedAreas: skipped, errors: failures))
         }

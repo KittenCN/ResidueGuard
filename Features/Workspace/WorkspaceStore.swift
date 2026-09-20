@@ -37,6 +37,7 @@ final class WorkspaceStore {
     private(set) var configuredLaunchRoots: [URL] = []
     private(set) var configuredApplicationRoots: [URL] = []
     private var scanTask: Task<Void, Never>?
+    private var targetDisappearanceTracker = RecentTargetDisappearanceTracker()
     private var comparisonBaseline: ObservationSnapshot?
     private let scanner: WorkspaceScanner
     init(scanner: WorkspaceScanner = .live, syntheticScan: Bool = false) {
@@ -143,16 +144,21 @@ final class WorkspaceStore {
             let snapshot = Self.withUnrequestedCoverage(observed, roots: omittedRoots)
             guard generation == requestedGeneration else { return }
             let baseline = comparisonBaseline
+            let priorTargetTracker = targetDisappearanceTracker
+            let targetTrackingCancelled = cancellationRequested || Task.isCancelled
             let comparisonWork = Task.detached(priority: .utility) {
-                let observation = Self.comparisonObservation(snapshot)
+                var updatedTargetTracker = priorTargetTracker
+                let protectedSnapshot = updatedTargetTracker.apply(snapshot, cancelled: targetTrackingCancelled || Task.isCancelled)
+                let observation = Self.comparisonObservation(protectedSnapshot)
                 let comparison = baseline.map { SnapshotComparison.compare(previous: $0, current: observation) }
-                return (observation, comparison, SnapshotComparison.canUseAsBaseline(snapshot: observation, providerIDs: ["launchd.configuration"]))
+                return (observation, comparison, SnapshotComparison.canUseAsBaseline(snapshot: observation, providerIDs: ["launchd.configuration"]), protectedSnapshot, updatedTargetTracker)
             }
-            let (currentObservation, comparison, completeComparison) = await withTaskCancellationHandler {
+            let (currentObservation, comparison, completeComparison, protectedSnapshot, updatedTargetTracker) = await withTaskCancellationHandler {
                 await comparisonWork.value
             } onCancel: { comparisonWork.cancel() }
             guard generation == requestedGeneration else { return }
-            sourceRecords = snapshot.rows.map(WorkspaceRecord.init(scan:))
+            if !cancellationRequested && !Task.isCancelled { targetDisappearanceTracker = updatedTargetTracker }
+            sourceRecords = protectedSnapshot.rows.map(WorkspaceRecord.init(scan:))
             ownershipGraph = snapshot.ownershipGraph
             coverage = snapshot.coverage; loadedAt = snapshot.observedAt
             generation = snapshot.generation
