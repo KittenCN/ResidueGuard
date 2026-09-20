@@ -68,3 +68,5 @@ v3 保留默认独立会话，不打开 JoinExistingSession，不为了通过测
 主任务随后在同一专用 VirtualMac、macOS27.0/26A428、普通客体账户运行v3：全部17场景通过，runner exit0，逐场景精确自有client/server进程均退出。包括status正向、4种非status拒绝、4种非法frame拒绝、8条消息后第9条限制、4连接后第5连接拒绝、主动失效后拒绝、错误client/server pin、UID/session期望不匹配，以及同一已拒绝二进制更正实验pin后成功。messageLimit本次实际第9条收到messageLimit；不是transportRejected替代分支。
 
 证据：`.local-evidence/vm-transfer/status-wire-v3/status-wire-vm-results.txt` 与 `exit.txt`；主任务另行解析17条JSON并核对17条进程退出记录以及全部authorizesMutation=false、manifestTrustedForProduction=false。v1/v2失败保留，不能抹成从未失败。此结果验证本次GUI caller会话前提及连接内会话约束，不是跨真实用户/不同登录会话攻击验收；没有创建证书/keychain、安装helper或执行系统清理。宿主真实XPC与原五场景本轮未重跑。
+
+固定subsystem阶段日志另确认v3命中S_CONNECTION_LIMIT、S_PEER_UID_REJECTED、S_PEER_SESSION_REJECTED，对应预算与UID/session负例确实到达服务端拒绝阶段；原始日志仅保留本地。统一测试入口新增 `./script/test.sh ipc-model`，实际10项通过（0.003秒），不运行真实XPC，日志 `.local-evidence/status-wire-script-entry.log`。

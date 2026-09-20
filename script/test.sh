@@ -37,8 +37,11 @@ case "${1:-core}" in
  security)
   /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResidueSecurity"
   ;;
+ ipc-model)
+  /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResidueIPCExperiment"
+  ;;
  ui)
   /usr/bin/xcodebuild -project "$ROOT_DIR/ResidueGuard.xcodeproj" -scheme ResidueGuard -destination 'platform=macOS' -derivedDataPath "$ROOT_DIR/.build-xcode" CODE_SIGN_IDENTITY=- test
   ;;
- *) echo 'usage: script/test.sh [core|platform|security|persistence|backup|transactions|quarantine|recovery|audit-import|preferences|ui]' >&2; exit 2 ;;
+ *) echo 'usage: script/test.sh [core|platform|security|persistence|backup|transactions|quarantine|recovery|audit-import|preferences|ipc-model|ui]' >&2; exit 2 ;;
 esac

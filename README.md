@@ -20,6 +20,7 @@
 - `./script/test.sh transactions`：真实 SQLite 与无副作用事务驱动的集成测试。
 - `./script/test.sh persistence`：系统 SQLite 持久化日志测试，仅操作测试自有临时目录。
 - `./script/test.sh security`：无副作用的 helper 协议与身份/token 策略测试。
+- `./script/test.sh ipc-model`：只测试独立 XPC 实验的帧、预算和会话绑定模型，不启动真实 XPC 或 helper。
 - `./script/package_local_release.sh`：创建本地 Release ZIP 与 SHA-256 清单，解包后再次检查签名；不安装、不上传、不公证。
 - `./script/package_preview.sh`：创建本地 Debug 预览压缩包，不是正式发布。
 - `./script/release_check.sh`：只读发布门禁检查，当前预期阻断。
