@@ -6,7 +6,7 @@ import Darwin
 enum SafeFiles {
     enum Failure: Error { case invalidPath, posix(Int32), notRegular, tooLarge, changed }
     static func descriptor(_ url: URL, directory: Bool = false) throws -> Int32 {
-        guard url.isFileURL, url.path.hasPrefix("/"), !url.path.contains("\0") else { throw Failure.invalidPath }
+        guard url.isFileURL, allowedUserPath(url.path) else { throw Failure.invalidPath }
         let parts = url.path.split(separator: "/").map(String.init)
         guard !parts.contains("..") else { throw Failure.invalidPath }
         var fd = open("/", O_RDONLY | O_DIRECTORY | O_CLOEXEC)
@@ -88,9 +88,30 @@ extension SafeFiles {
         }
     }
     static func allowedUserPath(_ path: String) -> Bool {
-        guard path.hasPrefix("/"), !path.split(separator: "/").contains(".."), !path.split(separator: "/").contains(".") else { return false }
-        guard path == "/Users" || path.hasPrefix("/Users/") else { return true }
-        let home = realUserHome
-        return !home.isEmpty && (path == home || path.hasPrefix(home + "/"))
+        guard let parts = absolutePathComponents(path) else { return false }
+        // Alternate Data-volume paths must not bypass the ordinary user boundary.
+        // These aliases have no independently authorized scope in the baseline.
+        if parts.count >= 2, componentMatches(parts[0], "System"), componentMatches(parts[1], "Volumes") { return false }
+        guard let first = parts.first, componentMatches(first, "Users") else { return true }
+        guard let home = absolutePathComponents(realUserHome), !home.isEmpty else { return false }
+        // Preserve exact case for identity. Case-insensitive matching above is only
+        // a conservative exclusion, never proof that differently named files match.
+        return parts.count >= home.count && Array(parts.prefix(home.count)) == home
+    }
+    static func absolutePathComponents(_ path: String) -> [String]? {
+        guard path.hasPrefix("/"), !path.contains("\0") else { return nil }
+        let parts = path.split(separator: "/").map(String.init)
+        guard !parts.contains("."), !parts.contains("..") else { return nil }
+        return parts
+    }
+    static func componentMatches(_ component: String, _ protectedName: String) -> Bool {
+        component.caseInsensitiveCompare(protectedName) == .orderedSame
+    }
+    static func isExternalVolumePath(_ path: String) -> Bool {
+        guard let first = absolutePathComponents(path)?.first else { return false }
+        return componentMatches(first, "Volumes")
+    }
+    static func isTrashPath(_ path: String) -> Bool {
+        absolutePathComponents(path)?.contains { componentMatches($0, ".Trash") || componentMatches($0, ".Trashes") } ?? false
     }
 }

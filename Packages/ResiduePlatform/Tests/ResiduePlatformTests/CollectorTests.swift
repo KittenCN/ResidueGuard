@@ -112,3 +112,31 @@ private func directory() throws -> URL {
     let snapshot = await ScanService(configuration: ScanConfiguration(launchRoots: roots, applicationRoots: [])).scan()
     #expect(snapshot.coverage.contains { $0.providerID == "scan.limits" && $0.skippedAreas.contains("rootLimit") })
 }
+
+@Test func alternatePathSpellingsCannotBypassUserBoundary() {
+    for path in ["//Users/another-user/private", "/users/another-user/private", "/USERS/another-user/private", "/System/Volumes/Data/Users/another-user/private", "/Users/another-user\0/ignored"] {
+        #expect(!SafeFiles.allowedUserPath(path), "Must block alternate spelling: \(path)")
+    }
+    #expect(SafeFiles.allowedUserPath(SafeFiles.realUserHome + "//Library/LaunchAgents"))
+    #expect(!SafeFiles.allowedUserPath(SafeFiles.realUserHome + "-different/Library"))
+}
+
+@Test(arguments: ["//Volumes/", "/volumes/", "/VOLUMES//"])
+func alternateExternalVolumeSpellingDoesNotBecomeMissingTarget(prefix: String) async throws {
+    let root = try directory(); defer { try? FileManager.default.removeItem(at: root) }
+    try fixture(["Label": "fixture.volume", "Program": "\(prefix)residue-fixture-offline-\(UUID().uuidString)/tool"]).write(to: root.appendingPathComponent("a.plist"))
+    let snapshot = await ScanService(configuration: ScanConfiguration(launchRoots: [ScanRoot(url: root, scope: "test")], applicationRoots: [])).scan()
+    #expect(snapshot.rows.first?.presence == .unknown)
+    #expect(snapshot.rows.first?.evidence.contains("externalVolumeNotAuthorized; availabilityUnknown") == true)
+    #expect(CodeIdentityInspector().inspect(application: URL(fileURLWithPath: prefix + "fixture.app")).diagnostic == "scopeNotAuthorized")
+}
+
+@Test func pathClassificationRejectsTraversalAndPreservesCase() {
+    #expect(SafeFiles.absolutePathComponents("/fixture/../other") == nil)
+    #expect(SafeFiles.absolutePathComponents("/fixture/./other") == nil)
+    #expect(SafeFiles.absolutePathComponents("/fixture\0/other") == nil)
+    #expect(SafeFiles.absolutePathComponents("//CaseSensitive//File") == ["CaseSensitive", "File"])
+    #expect(SafeFiles.isTrashPath("/fixture//.Trash//tool"))
+    #expect(SafeFiles.isTrashPath("/fixture/.trash/tool"))
+    #expect(!SafeFiles.isExternalVolumePath("/VolumesOther/tool"))
+}

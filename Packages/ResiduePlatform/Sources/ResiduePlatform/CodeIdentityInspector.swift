@@ -23,7 +23,7 @@ public struct CodeIdentityInspector: Sendable {
             CodeIdentityObservation(status: status, signingIdentifier: nil, teamID: nil, designatedRequirement: nil, diagnostic: diagnostic, observedAt: time)
         }
         if Task.isCancelled { return result(.cancelled, "cancelled") }
-        guard SafeFiles.allowedUserPath(application.path), !application.path.hasPrefix("/Volumes/") else { return result(.unavailable, "scopeNotAuthorized") }
+        guard SafeFiles.allowedUserPath(application.path), !SafeFiles.isExternalVolumePath(application.path) else { return result(.unavailable, "scopeNotAuthorized") }
         do {
             let root = try SafeFiles.descriptor(application, directory: true); defer { close(root) }
             var before = stat()

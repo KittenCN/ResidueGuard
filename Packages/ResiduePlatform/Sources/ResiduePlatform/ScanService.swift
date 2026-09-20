@@ -92,8 +92,8 @@ public actor ScanService {
                 if !record.parseWarnings.isEmpty { evidence.append(contentsOf: record.parseWarnings) }
                 if !Set(record.declaredAppIDs).isDisjoint(with: knownApps) { evidence.append("declaredBundleObserved; ownership/signature unverified") }
                 if !duplicate && record.parseWarnings.isEmpty, let path = record.targetReferences.first, path.hasPrefix("/") {
-                    if path.hasPrefix("/Volumes/") { state = .unknown; evidence.append("externalVolumeNotAuthorized; availabilityUnknown") }
-                    else if path.contains("/.Trash/") || path.contains("/.Trashes/") { state = .inTrash }
+                    if SafeFiles.isExternalVolumePath(path) { state = .unknown; evidence.append("externalVolumeNotAuthorized; availabilityUnknown") }
+                    else if SafeFiles.isTrashPath(path) { state = .inTrash }
                     else if !SafeFiles.allowedUserPath(path) { evidence.append("otherUserTargetNotInspected") }
                     else {
                         do {
