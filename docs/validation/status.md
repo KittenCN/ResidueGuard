@@ -36,3 +36,5 @@ BTM独立VM只读探针在5秒与30秒预算下均超时、双流为空，原因
 覆盖范围约束的快照比较与已授权配置根局部复扫已接入：不完整/未请求范围不产生负面观察、不替换完整基线，比较移出主线程。Core59项通过（含10,000记录比较约0.23秒），GUI22项中21通过/1显式跳过/0失败。见[快照比较验证](coverage-aware-snapshot-diff-2026-09-20.md)。
 
 固定自有VM bootout单次实测exit0，源/程序未变；后置print113仍保留unknown，不自动bootstrap/隔离。Quarantine76项通过（含Bootout13项和独立reader4项），独立只读进程VM核验exit0，1条/4槽、0失败、无执行授权。见[服务实验](owned-fixture-bootout-results-2026-09-20.md)。源身份到rename之间未找到公开原子绑定接口，第三方gate继续关闭，见[竞争研究](source-identity-race-research-2026-09-20.md)。
+
+P4新增有界HelperRequest wire codec：16KiB/深度/字符串限制，严格规范字节与版本/字段校验；Security23项通过。未连接真实认证或executor，解析成功不产生权限。见[wire验证](helper-wire-codec-2026-09-20.md)。
