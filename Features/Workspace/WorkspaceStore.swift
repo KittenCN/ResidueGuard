@@ -15,6 +15,7 @@ final class WorkspaceStore {
     }
     private var sourceRecords: [WorkspaceRecord] = []
     let retention = RetentionStore()
+    private(set) var ownershipGraph: CandidateOwnershipGraph?
     private var lastProtectedIDs: Set<String> = []
     var retentionIsSessionOnly: Bool { isDemo || isSyntheticScan }
     var records: [WorkspaceRecord] {
@@ -88,12 +89,14 @@ final class WorkspaceStore {
             let result = try await DemoLoader.load(from: url)
             guard !Task.isCancelled else { notice = "演示加载已取消。"; return }
             previousSourceRecords = nil
+            ownershipGraph = nil
             sourceRecords = result.map(WorkspaceRecord.init(demo:)); coverage = []; isDemo = true; loadedAt = Date(); generation = UUID().uuidString
             selectedIDs.removeAll(); inspectedID = nil
             notice = "已载入合成演示数据，不代表本机扫描结果。"
         } catch { notice = "演示加载失败：\(error.localizedDescription)" }
     }
     func unloadDemo() {
+        ownershipGraph = nil
         previousSourceRecords = nil
         sourceRecords = []; coverage = []; isDemo = false; loadedAt = nil; generation = UUID().uuidString
         selectedIDs.removeAll(); inspectedID = nil; notice = "已退出演示；尚未运行真实扫描。"
@@ -113,6 +116,7 @@ final class WorkspaceStore {
         guard isSyntheticScan || !configuredLaunchRoots.isEmpty else {
             notice = "请先选择启动配置目录，明确授权只读范围。"; return
         }
+        ownershipGraph = nil
         sourceRecords = []; coverage = []; isDemo = false; loadedAt = nil
         selectedIDs.removeAll(); inspectedID = nil; review = nil; showsReview = false
         generation = UUID().uuidString
@@ -134,6 +138,7 @@ final class WorkspaceStore {
             let snapshot = await scanner.scan(configuration)
             guard generation == requestedGeneration else { return }
             sourceRecords = snapshot.rows.map(WorkspaceRecord.init(scan:))
+            ownershipGraph = snapshot.ownershipGraph
             coverage = snapshot.coverage; loadedAt = snapshot.observedAt
             generation = snapshot.generation
             let currentSources = snapshot.rows.map(\.record)

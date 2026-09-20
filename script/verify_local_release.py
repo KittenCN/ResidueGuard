@@ -27,8 +27,8 @@ for architecture in architectures:
     if b"(adhoc,runtime)" not in result.stderr:
         raise SystemExit("Expected local ad-hoc Hardened Runtime signature: " + architecture)
 contents = executable.read_bytes()
-for flag in (b"--ui-history-fixture", b"--ui-history-invalid", b"--ui-history-slow"):
+for flag in (b"--ui-history-fixture", b"--ui-history-invalid", b"--ui-history-slow", b"--ui-synthetic-scan", b"--ui-slow-scan", b"--ui-ownership-fixture"):
     if flag in contents:
-        raise SystemExit("Debug history injection marker present")
+        raise SystemExit("Debug injection marker present")
 print("PASS local Release signature/entitlements: " + ", ".join(architectures))
 print("App Sandbox + user-selected read-only; no debugger entitlement; no distribution or GUI claim")

@@ -34,6 +34,7 @@ struct WorkspaceView: View {
                 ScanControlsView(store: store)
                 Divider()
                 if store.page == .overview { OverviewView(store: store) }
+                else if store.page == .applications { ApplicationAssociationView(store: store) }
                 else if store.page.isPermission { PermissionGuidanceView(page: store.page) }
                 else if store.page == .history { HistoryReportView() }
                 else if store.page == .ignore { RetentionRulesView(store: store) } else { RecordsView(store: store) }

@@ -32,6 +32,8 @@ public struct ScanRow: Sendable, Identifiable {
     public init(record: SourceRecord, presence: PresenceState, capability: CapabilityDescriptor, evidence: [String]) { self.record = record; self.presence = presence; self.capability = capability; self.evidence = evidence }
 }
 public struct ApplicationInstance: Sendable {
+    public let generation: String
+    public let signingIdentifier: String?
     public let bundleID: String
     public let path: String
     public let fileIdentity: String
@@ -41,13 +43,26 @@ public struct ApplicationInstance: Sendable {
     public let designatedRequirement: String?
     public let signingDiagnostic: String
     public let observedAt: Date
+    public var ownershipObservation: OwnershipApplicationObservation {
+        .init(generation: generation, volumeIdentity: volumeIdentity, fileIdentity: fileIdentity,
+              path: path, declaredBundleID: bundleID, signingIdentifier: signingIdentifier,
+              signingStatus: signingStatus, teamID: teamID, designatedRequirement: designatedRequirement,
+              observedAt: observedAt)
+    }
 }
 public struct ScanSnapshot: Sendable {
     public let generation: String
     public let observedAt: Date
     public let rows: [ScanRow]
     public let applications: [ApplicationInstance]
+    public let ownershipGraph: CandidateOwnershipGraph
     public let coverage: [ScanCoverage]
-    public init(generation: String, observedAt: Date, rows: [ScanRow], coverage: [ScanCoverage], applications: [ApplicationInstance] = []) { self.applications = applications; self.generation = generation; self.observedAt = observedAt; self.rows = rows; self.coverage = coverage }
+    public init(generation: String, observedAt: Date, rows: [ScanRow], coverage: [ScanCoverage], applications: [ApplicationInstance] = [], ownershipGraph: CandidateOwnershipGraph? = nil) {
+        self.applications = applications; self.generation = generation; self.observedAt = observedAt
+        self.rows = rows; self.coverage = coverage
+        self.ownershipGraph = ownershipGraph ?? CandidateOwnershipGraphBuilder.build(
+            records: rows.map(\.record), applications: applications.map(\.ownershipObservation),
+            sourceCoverage: coverage, generation: generation)
+    }
     public var isCancelled: Bool { coverage.contains { $0.state == .cancelled } }
 }

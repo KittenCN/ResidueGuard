@@ -21,7 +21,6 @@ public actor ScanService {
         let generation = UUID().uuidString, start = Date()
         let os = SafeFiles.osBuild
         var rows: [ScanRow] = [], coverage: [ScanCoverage] = []
-        var knownApps: Set<String> = []
         var applications: [ApplicationInstance] = []
         var totalBytes = 0
         var signatureCount = 0
@@ -47,8 +46,8 @@ public actor ScanService {
                         let signing: CodeIdentityObservation?
                         if signatureCount < 32 { signing = CodeIdentityInspector().inspect(application: appURL); signatureCount += 1 }
                         else { signing = nil; if !skipped.contains("signatureInspectionLimit") { skipped.append("signatureInspectionLimit") } }
-                        applications.append(ApplicationInstance(bundleID: id, path: appURL.path, fileIdentity: String(identity.st_ino), volumeIdentity: String(identity.st_dev), signingStatus: signing?.status.rawValue ?? "unverified", teamID: signing?.teamID, designatedRequirement: signing?.designatedRequirement, signingDiagnostic: signing?.diagnostic ?? "signatureInspectionLimit", observedAt: start))
-                        knownApps.insert(id); parsed += 1
+                        applications.append(ApplicationInstance(generation: generation, signingIdentifier: signing?.signingIdentifier, bundleID: id, path: appURL.path, fileIdentity: String(identity.st_ino), volumeIdentity: String(identity.st_dev), signingStatus: signing?.status.rawValue ?? "unverified", teamID: signing?.teamID, designatedRequirement: signing?.designatedRequirement, signingDiagnostic: signing?.diagnostic ?? "signatureInspectionLimit", observedAt: start))
+                        parsed += 1
                     } catch { failures.append(SafeFiles.diagnostic(error)) }
                 }
             } catch { failures.append(SafeFiles.diagnostic(error)) }
@@ -90,7 +89,6 @@ public actor ScanService {
                 let duplicate = (labels[record.displayName]?.count ?? 0) > 1
                 if duplicate { evidence.append("duplicateLabel") }
                 if !record.parseWarnings.isEmpty { evidence.append(contentsOf: record.parseWarnings) }
-                if !Set(record.declaredAppIDs).isDisjoint(with: knownApps) { evidence.append("declaredBundleObserved; ownership/signature unverified") }
                 if !duplicate && record.parseWarnings.isEmpty, let path = record.targetReferences.first, path.hasPrefix("/") {
                     if SafeFiles.isExternalVolumePath(path) { state = .unknown; evidence.append("externalVolumeNotAuthorized; availabilityUnknown") }
                     else if SafeFiles.isTrashPath(path) { state = .inTrash }
@@ -117,6 +115,11 @@ public actor ScanService {
         for provider in ["launchd.runtime", "backgroundTaskManagement", "loginItems", "permissions.TCC"] {
             coverage.append(ScanCoverage(providerID: provider, state: Task.isCancelled ? .cancelled : .unsupported, declaredRoots: [], diagnostics: ["未建立已验证来源 profile；不读取 TCC/BTM 数据库、不进行全量重置。"], osBuild: os, generation: generation, startedAt: start, completedAt: Date(), skippedAreas: ["entireProvider"]))
         }
-        return ScanSnapshot(generation: generation, observedAt: start, rows: rows, coverage: coverage, applications: applications)
+        let graph = CandidateOwnershipGraphBuilder.build(records: rows.map(\.record),
+            applications: applications.map(\.ownershipObservation), sourceCoverage: coverage,
+            generation: generation, limits: .init(maximumRecords: config.maximumEntries,
+                                                   maximumApplications: config.maximumEntries))
+        return ScanSnapshot(generation: generation, observedAt: start, rows: rows, coverage: coverage,
+                            applications: applications, ownershipGraph: graph)
     }
 }
