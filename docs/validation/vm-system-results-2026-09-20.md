@@ -30,3 +30,11 @@ VirtualBuddy 2.2 Beta build 417 的“保存运行状态”明确返回暂时禁
 - 未检查 BTM 历史是否消失；系统通知出现不代表登记清理验收。无 TCC reset/直读、无 root helper/共享服务测试。
 - ad-hoc 只证明本地测试签名校验；不能证明 Developer ID、稳定 helper peer 身份或公证分发。
 - 所有产品 mutation gate 继续关闭。不可把正常路径子集改写为整个 ISO/P3/P4 通过。
+
+## 后续开发验证
+
+增加独立 ResiduePersistence 系统 SQLite 日志包，生产执行 gate 保持关闭。主任务复跑 `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --package-path Packages/ResiduePersistence`：15/15 通过。状态顺序、持久化防重放及存储异常拒绝已覆盖；尚无进程崩溃/断电或 VM 执行链验收。接口和局限见该包 README；统一入口为 `script/test.sh persistence`。
+
+增加限定 macOS 27 / 26A428 的精确服务运行状态解析器及脱敏客体夹具。初次 Platform 复跑 32 项中一项失败（3 个断言）：字段值自身包含 ` = ` 时错误地被拆为多个字段。修正为只分割首个字段分隔符后，全量 32/32 通过。非成功退出、截断、未知 build、结构/身份冲突均返回 unknown；missing-service 文本不作为可靠不存在证据。未接入 GUI 全系统扫描或开启清理能力。
+
+当前尚未完成客体 GUI 文件选择和扫描验收，也未完成整个项目计划。后续继续真实 GUI 验证、隔离失败路径、日志执行边界与 helper 信任链；签名发布仍需有效身份。

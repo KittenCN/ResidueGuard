@@ -1,0 +1,35 @@
+# ResiduePersistence
+
+P3 的独立 SQLite 事务日志原型。Swift 6、macOS 14 最低部署目标，链接系统 `sqlite3`，没有外部依赖。尚未接入 GUI、生产执行 gate、helper 或实际清理；不构成 P3/P4 集成验收。
+
+## API 与调用顺序
+
+调用方先准备当前有效用户拥有、无扩展 ACL、0700 的私有目录，然后只在明确首次初始化时调用 `TransactionJournal(directory:createNew: true)`。正常启动使用默认 `createNew: false`；数据库丢失、损坏、版本不支持均拒绝打开，不能用“删除数据库重试”恢复清理功能。`createNew: true` 也拒绝已存在数据库。
+
+- `claim(planID:digest:nonce:)`：在 `BEGIN IMMEDIATE` 事务中原子占用计划 ID 与 nonce；任一已用即拒绝，完成/失败之后也不释放。
+- `prepare(planID:operationID:)`：提交准备记录。调用方必须等成功返回后才允许相应外部操作；本包不会执行外部操作。
+- `recordResult(planID:operationID:result:)`：记录 succeeded / failed / unverified。只有成功才能准备后续步骤；重复结果或重复操作拒绝。
+- `finish(planID:)`：结束审计记账，允许失败结果，但存在未决 prepared 步骤时拒绝；它不表示系统操作成功或已回滚。
+- `unfinishedEntries()`：在只读 SQL 快照事务中查询未完成计划和逐步结果，不续跑、不补偿、不改变任何记录。
+
+claim 的 digest 是上层生成的不透明计划摘要；本包不验证摘要算法、授权、token 到期时间、调用方身份、计划操作集合、源指纹、备份或系统后置状态。接入前必须由已有安全 gate 分别验证这些条件。进程重开后 nonce 和 plan ID 仍被占用，不能以“恢复”名义重新执行计划。
+
+## 存储约束
+
+目录逐级用 `openat/O_NOFOLLOW` 打开，拒绝路径中的符号链接及不可信 owner；祖先不允许组/其他用户可写，root-owned sticky 临时根例外。最终目录必须当前有效用户拥有、0700、无扩展 ACL。文件必须 0600、当前有效用户拥有、单硬链接、普通文件、无扩展 ACL；数据库和目录身份在每次事务前后复核，异常使实例永久闭锁。既有 WAL/SHM 或不安全 journal sidecar 拒绝。测试使用明确的 `/private/tmp` 自有随机目录，避免 `/tmp`、`/var` symlink 别名。
+
+schema v1 通过 SQLite application ID、user version、完整 schema（不允许额外 trigger）和 integrity/foreign-key 检查验证，不隐式迁移。使用 DELETE journal、synchronous FULL、macOS fullfsync，并读取确认配置；首次创建后 fsync 目录。SQLite 出错使实例闭锁，后续操作必须停止。没有清空日志、释放 nonce 或删除历史 API。
+
+安全边界：SQLite 自身仍通过路径打开文件；目录 fd 锚与身份复核不是自定义 SQLite VFS，不能宣称抵御具有完全控制权的同 UID/root 恶意进程、存储介质回滚或真正断电。普通用户目录不可作为特权 helper 的可信 journal。实际接入须选定执行身份拥有的固定根目录，并增加独立进程崩溃/断电和隔离 VM 的执行链测试。只读恢复查询可能由 SQLite 完成本应用数据库自身的 hot-journal 恢复；绝不触碰系统权限数据库。
+
+## 已执行验证
+
+2026-09-20，macOS 27.0 (26A428)，Xcode 27.0 (27A266a)：
+
+```sh
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --package-path Packages/ResiduePersistence
+```
+
+15 个 Swift Testing 用例通过：重新打开后 prepared/result 保留、计划与 nonce 防重放、失败不消耗其他 ID、双连接竞争 claim、状态顺序、失败/unverified 停止后续、未知版本/损坏/额外 trigger 拒绝、显式首次创建、权限/ACL/符号链接/硬链接/目录替换与实例闭锁。所有写入及 ACL 夹具均在测试自有随机临时目录；没有卸载服务、重置权限、安装 helper 或清理真实软件。
+
+这是宿主上临时文件和系统 SQLite 的包测试，不是 VM mutation 验收或真实断电持久性证明。首次测试暴露临时路径别名和 ACL API 语义问题，修正后通过；无跳过用例。
