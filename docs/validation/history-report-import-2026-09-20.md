@@ -33,10 +33,18 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild \
 
 ## 未完成边界
 
-当前实现是用户导入文件后的只读核查，不是自动记录全部真实清理历史；SQLite journal 与审计 envelope 的原子绑定尚未接入。本报告提交时，真实文件选择器导入端到端尚未验证。没有服务卸载、文件清理、权限重置、helper 安装或恢复行为。
+当前实现是用户导入文件后的只读核查，不是自动记录全部真实清理历史；SQLite journal 与审计 envelope 的原子绑定尚未接入。该阶段最初尚未完成真实选择器验收；后续VM结果如下。没有服务卸载、文件清理、权限重置、helper 安装或恢复行为。
 
 ## 文件读取层后续强化
 
 实际文件读取已抽取至独立 ResidueAuditImport；App 只管理 NSOpenPanel 授权与异步 UI 状态。reader 对读取前后 fd 身份、大小、owner/mode、mtime/ctime再次比较，普通并发变化明确拒绝；这不是报告来源真实性证明。使用包内真实文件测试补足 UI 合成注入不经过文件读取的边界。实际验证：`./script/test.sh audit-import` 15项通过；重新构建成功；读取模块接入后的 History UI 针对性复测为4通过、1显式跳过、0失败（25.068秒）。
 
 主任务尝试真实 CUA picker 验收时，宿主锁屏；用户随后确认已解锁，但 native pipe 连续中断，重置工具会话也未恢复。此环境问题只阻塞手动式 UI 验收，不计为通过，也未停止其余代码测试。
+
+## 后续 VM Release 真实文件授权验收
+
+恢复VM界面控制后，将经双架构签名核验的本地Release完整复制到客体独立.app路径，复制后再次strict验证。未使用DEBUG注入开关；通过GUI打开“操作历史与恢复”，点导入，在真实NSOpenPanel选择客体桌面的合成history.json，再点“只读导入”。
+
+实际屏幕显示“已导入脱敏摘要”“来源未经验证 · 只读摘要”“目标1项 · 计划1步 · 已记录1步 · 备份记录0项”和未结束审计提示。分域效果作为报告记载呈现，不宣称为新执行的系统操作。没有显示原始target ID/指纹，没有执行/恢复按钮。沙盒为显式user-selected read-only，文件授权不持久化。
+
+因此**VM实际picker→沙盒文件读取→解析→脱敏显示端到端通过**。自动XCTest跨进程picker仍显式跳过，不能把它改记为自动用例passed。宿主直接CUA连接该应用出现native pipe问题的历史仍保留，不影响另行取得的客体证据。

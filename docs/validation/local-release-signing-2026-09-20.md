@@ -11,4 +11,4 @@
 - 二进制没有三个 History UI 注入flag；这只是这些入口的构建检查，不替代全部功能验收。
 - 同一校验脚本对现有 Debug 包明确退出1（Unexpected Release entitlements），负例真实生效；Debug保持原调试配置。
 
-Intel仅编译/签名切片验证，未在Intel设备运行。Release进程已实际启动；GUI内容和真实系统picker验收暂未完成；当前CUA native pipe异常不算成功。ad-hoc资源封包与Hardened Runtime不证明开发者身份、Gatekeeper分发信任、公证或helper授权。未安装证书，没有改宿主信任库，也没有以发布门检查阻断本地开发。
+Intel仅编译/签名切片验证，未在Intel设备运行。Release进程已实际启动；后续在VM复制后strict验证、GUI启动与真实系统picker导入也通过，见history-report-import-2026-09-20.md。宿主CUA native pipe异常没有计入成功。ad-hoc资源封包与Hardened Runtime不证明开发者身份、Gatekeeper分发信任、公证或helper授权。未安装证书，没有改宿主信任库，也没有以发布门检查阻断本地开发。
