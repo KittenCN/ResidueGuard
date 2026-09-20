@@ -1,6 +1,6 @@
 # 固定自有VM实验上下文（2026-09-20）
 
-本轮只完成代码、临时夹具测试及宿主拒绝验证，**没有执行VM隔离/恢复实验**。
+代码与临时夹具验证后，主任务已在既有可回滚VM执行固定ISO01实验；结果见本文末尾。
 
 架构：把原`Packages/ResidueQuarantine`的源码/测试迁入`Packages/ResidueBackup`，仍提供独立`ResidueQuarantine` product/module。移除旧独立Package.swift及废弃生成build目录；`script/test.sh`按两个target过滤，避免命令入口失效。Core、Platform和App生产门不改变。
 
@@ -20,3 +20,9 @@
 新8项流程测试验证正常往返的4个动作边界runtime检查、隔离前unknown保留原源、隔离后unknown不补偿、恢复前unknown不补偿、恢复后unknown如实报告已恢复文件状态、隔离unverified立即停止、出现新源时只读检查拒绝覆盖，以及恢复动作拒绝时不把已经隔离的整体实验误报notMoved。runtime返回为测试注入，不能代替客体launchctl验证；文件动作使用随机临时自有目录的真实文件API。
 
 构建入口：`swift build --package-path Packages/ResidueBackup --product ResidueOwnedFixtureVMProbe`，二进制位于该package `.build/debug/ResidueOwnedFixtureVMProbe`。下一步在已授权自有VM夹具上独立运行并记录源/隔离/备份及runtime真实结果；若后置检查拒绝，先读取结果和保留证据，不自动重跑或恢复。
+
+## 后续真实客体验证
+
+同一macOS27/26A428 VirtualMac客体，将新probe复制到独立客体目录，先核对SHA256和strict签名后执行；真实退出0，返回 `PASS ISO01 backup/isolate/inspect/restore verified`。文件backup→isolate→inspect→restore→inspect由实际fd API执行，各次runtime观察均为registeredNotRunning，未执行注册变更命令。成功输出和退出码保存在忽略的VM transfer evidence目录，截图也直接观察到PASS。
+
+这完成固定自有夹具正常路径；不等于完整产品事务、第三方清理、崩溃恢复或磁盘满矩阵。仍保留check→rename竞争限制和生产gate关闭。没有启动夹具程序，也未改变RunAtLoad/KeepAlive。

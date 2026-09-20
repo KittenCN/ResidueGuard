@@ -7,6 +7,11 @@ import ResiduePersistence
 @main struct JournalCrashProbe {
     static func main() async throws {
         let args = CommandLine.arguments
+        #if DEBUG
+        if args.count == 4, args[2].hasPrefix("audit-") || args.count == 4 && args[2].hasPrefix("migration-") {
+            try await AuditedCrashProbe.run(args); return
+        }
+        #endif
         guard args.count == 4, ["writer", "verify"].contains(args[1]),
               ["claim", "prepared", "result", "finished", "uncommitted"].contains(args[2]) else { exit(64) }
         let directory = URL(fileURLWithPath: args[3], isDirectory: true)

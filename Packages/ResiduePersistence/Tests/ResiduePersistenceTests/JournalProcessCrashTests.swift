@@ -35,7 +35,17 @@ private func wait(_ process: Process, until condition: () -> Bool) throws {
     }
 }
 
-@Test(arguments: ["claim", "prepared", "result", "finished", "uncommitted"])
+private let crashStages: [String] = {
+    let legacy = ["claim", "prepared", "result", "finished", "uncommitted"]
+    #if DEBUG
+    return legacy + ["audit-claim", "audit-prepared", "audit-result", "audit-finished",
+                     "audit-prepare-beforecommit", "audit-result-beforecommit", "migration-beforecommit", "migration-aftercommit"]
+    #else
+    return legacy
+    #endif
+}()
+
+@Test(arguments: crashStages)
 func killedWriterRecoversInIndependentVerifier(stage: String) throws {
     let directory = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
         .appendingPathComponent("ResidueJournalCrashTests-" + UUID().uuidString)

@@ -1,10 +1,14 @@
 import CSQLite
 import Darwin
 import Foundation
+import ResidueCore
+import ResidueRecovery
 
 public enum JournalError: Error, Equatable, Sendable {
-    case unsafeStorage, storageFailure, unsupportedSchema, invalidInput, replay, invalidTransition
+    case unsafeStorage, storageFailure, unsupportedSchema, invalidInput, replay, invalidTransition, resourceLimit
 }
+
+public enum JournalSchema: Int, Sendable { case legacyV1 = 1, auditV2 = 2 }
 
 public enum StepResult: String, Sendable { case succeeded, failed, unverified }
 
@@ -23,18 +27,19 @@ public struct JournalEntry: Equatable, Sendable {
 
 /// Audit persistence only. This type never executes, retries, or authorizes an operation.
 public actor TransactionJournal {
-    private let storage: Storage
+    let storage: Storage
 
     /// The directory must already exist, be owned by the current effective UID, and be 0700.
     /// All path components must be real directories (use a canonical path, without symlinks).
     /// Pass createNew only for explicit first-time provisioning; it refuses an existing database.
     /// Normal startup never creates/replaces a missing database or resets replay protection.
-    public init(directory: URL, createNew: Bool = false) throws {
-        storage = try Storage(directory: directory, createNew: createNew)
+    public init(directory: URL, createNew: Bool = false, schema: JournalSchema = .legacyV1) throws {
+        storage = try Storage(directory: directory, createNew: createNew, schema: schema)
     }
 
     /// Atomically consumes both identifiers. They remain consumed even after failure or restart.
     public func claim(planID: String, digest: String, nonce: String) throws {
+        guard storage.schema == .legacyV1 else { throw JournalError.unsupportedSchema }
         try validate([planID, digest, nonce])
         try storage.transaction {
             guard try storage.integer("SELECT count(*) FROM plans WHERE plan_id=? OR nonce=?", [planID, nonce]) == 0 else {
@@ -46,6 +51,7 @@ public actor TransactionJournal {
 
     /// Commit this record successfully BEFORE performing the corresponding system mutation.
     public func prepare(planID: String, operationID: String) throws {
+        guard storage.schema == .legacyV1 else { throw JournalError.unsupportedSchema }
         try validate([planID, operationID])
         try storage.transaction {
             try requireOpen(planID)
@@ -59,6 +65,7 @@ public actor TransactionJournal {
 
     /// An unverified/failed result blocks subsequent steps. It does not imply rollback.
     public func recordResult(planID: String, operationID: String, result: StepResult) throws {
+        guard storage.schema == .legacyV1 else { throw JournalError.unsupportedSchema }
         try validate([planID, operationID])
         try storage.transaction {
             try requireOpen(planID)
@@ -71,6 +78,7 @@ public actor TransactionJournal {
 
     /// Marks audit bookkeeping complete, not success. Prepared steps without a result cannot finish.
     public func finish(planID: String) throws {
+        guard storage.schema == .legacyV1 else { throw JournalError.unsupportedSchema }
         try validate([planID])
         try storage.transaction {
             try requireOpen(planID)
@@ -84,7 +92,8 @@ public actor TransactionJournal {
     /// Startup recovery is observation only; no records are resumed or marked complete.
     public func unfinishedEntries() throws -> [JournalEntry] {
         return try storage.snapshot {
-            try storage.rows("SELECT plan_id,digest FROM plans WHERE finished=0 ORDER BY rowid").map { row in
+            if storage.schema == .auditV2 { try validateAuditConsistency() }
+            return try storage.rows("SELECT plan_id,digest FROM plans WHERE finished=0 ORDER BY rowid").map { row in
                 guard let planID = row[0], let digest = row[1] else { throw JournalError.storageFailure }
                 let steps = try storage.rows("SELECT step_index,operation_id,result FROM steps WHERE plan_id=? ORDER BY step_index", [planID]).map { item in
                     guard let indexText = item[0], let index = Int(indexText), let operation = item[1] else { throw JournalError.storageFailure }
@@ -97,7 +106,7 @@ public actor TransactionJournal {
         }
     }
 
-    private func requireOpen(_ planID: String) throws {
+    func requireOpen(_ planID: String) throws {
         guard try storage.integer("SELECT count(*) FROM plans WHERE plan_id=? AND finished=0", [planID]) == 1 else {
             throw JournalError.invalidTransition
         }
@@ -109,17 +118,27 @@ public actor TransactionJournal {
 }
 
 // OpaquePointer lifetime is owned by this wrapper, used exclusively by its owning actor.
-private final class Storage: @unchecked Sendable {
+final class Storage: @unchecked Sendable {
     private var db: OpaquePointer?
     private let directory: String
     private var directoryFD: Int32 = -1
     private var fileFD: Int32 = -1
     private let fileName = "journal.sqlite"
     private var poisoned = false
+    let schema: JournalSchema
+    private var initializing = true
     private static let planSchema = "CREATE TABLE plans(plan_id TEXT PRIMARY KEY NOT NULL,digest TEXT NOT NULL,nonce TEXT UNIQUE NOT NULL,finished INTEGER NOT NULL CHECK(finished IN (0,1)))"
     private static let stepSchema = "CREATE TABLE steps(plan_id TEXT NOT NULL REFERENCES plans(plan_id),step_index INTEGER NOT NULL CHECK(step_index>=0),operation_id TEXT NOT NULL,result TEXT CHECK(result IN ('succeeded','failed','unverified')),PRIMARY KEY(plan_id,step_index),UNIQUE(plan_id,operation_id))"
 
-    init(directory url: URL, createNew: Bool) throws {
+    static let maximumAuditDatabaseBytes = 64 * 1024 * 1024
+    static let auditSchema = "CREATE TABLE audits(plan_id TEXT PRIMARY KEY NOT NULL REFERENCES plans(plan_id),plan_payload TEXT NOT NULL,envelope TEXT NOT NULL)"
+    static let legacySchema = "CREATE TABLE legacy_plans(plan_id TEXT PRIMARY KEY NOT NULL REFERENCES plans(plan_id))"
+    private var expectedSchema: [[String?]] {
+        (schema == .auditV2 ? [Self.auditSchema, Self.legacySchema, Self.planSchema, Self.stepSchema] : [Self.planSchema, Self.stepSchema]).map { [$0] }
+    }
+
+    init(directory url: URL, createNew: Bool, schema: JournalSchema) throws {
+        self.schema = schema
         guard url.isFileURL, url.path.hasPrefix("/"), !url.pathComponents.contains("..") else { throw JournalError.unsafeStorage }
         directory = url.path
         do {
@@ -136,9 +155,9 @@ private final class Storage: @unchecked Sendable {
             try execute("PRAGMA foreign_keys=ON")
             // Refuse unknown journals before changing their SQLite journaling mode.
             if !created {
-                guard try integer("PRAGMA user_version") == 1,
+                guard try integer("PRAGMA user_version") == schema.rawValue,
                       try integer("PRAGMA application_id") == 1380403780 else { throw JournalError.unsupportedSchema }
-                guard try rows("SELECT sql FROM sqlite_schema WHERE sql IS NOT NULL ORDER BY name") == [[Self.planSchema], [Self.stepSchema]] else {
+                guard try rows("SELECT sql FROM sqlite_schema WHERE sql IS NOT NULL ORDER BY name") == expectedSchema else {
                     throw JournalError.unsupportedSchema
                 }
             }
@@ -153,21 +172,23 @@ private final class Storage: @unchecked Sendable {
                     try execute(Self.planSchema)
                     try execute(Self.stepSchema)
                     try execute("PRAGMA application_id=1380403780")
-                    try execute("PRAGMA user_version=1")
+                    if schema == .auditV2 { try execute(Self.auditSchema); try execute(Self.legacySchema) }
+                    try execute("PRAGMA user_version=\(schema.rawValue)")
                 }
                 guard fsync(directoryFD) == 0 else { throw JournalError.storageFailure }
             }
-            guard try integer("PRAGMA user_version") == 1,
+            guard try integer("PRAGMA user_version") == schema.rawValue,
                   try integer("PRAGMA application_id") == 1380403780 else { throw JournalError.unsupportedSchema }
             guard try rows("PRAGMA integrity_check") == [["ok"]],
                   try rows("PRAGMA foreign_key_check").isEmpty else { throw JournalError.storageFailure }
-            guard try rows("SELECT sql FROM sqlite_schema WHERE sql IS NOT NULL ORDER BY name") == [[Self.planSchema], [Self.stepSchema]] else {
+            guard try rows("SELECT sql FROM sqlite_schema WHERE sql IS NOT NULL ORDER BY name") == expectedSchema else {
                 throw JournalError.unsupportedSchema
             }
             // Preparing these statements detects a missing/changed schema without recreating tables.
             _ = try rows("SELECT plan_id,digest,nonce,finished FROM plans LIMIT 0")
             _ = try rows("SELECT plan_id,step_index,operation_id,result FROM steps LIMIT 0")
             try checkIdentity()
+            initializing = false
         } catch {
             if db != nil { sqlite3_close_v2(db); db = nil }
             if fileFD >= 0 { close(fileFD); fileFD = -1 }
@@ -233,6 +254,7 @@ private final class Storage: @unchecked Sendable {
                   expected.st_dev == actual.st_dev, expected.st_ino == actual.st_ino,
                   actual.st_mode & S_IFMT == S_IFREG, actual.st_mode & 0o7777 == 0o600,
                   actual.st_uid == geteuid(), actual.st_nlink == 1 else { throw JournalError.unsafeStorage }
+            if schema == .auditV2, actual.st_size > Self.maximumAuditDatabaseBytes { throw JournalError.resourceLimit }
             try Self.requireNoACL(fileFD)
             for suffix in ["-journal", "-wal", "-shm"] {
                 var sidecar = stat()
@@ -254,6 +276,7 @@ private final class Storage: @unchecked Sendable {
         try checkIdentity()
         try execute("BEGIN DEFERRED")
         do {
+            try verifySchema()
             let value = try body()
             try checkIdentity()
             try execute("COMMIT")
@@ -268,8 +291,10 @@ private final class Storage: @unchecked Sendable {
         try checkIdentity()
         try execute("BEGIN IMMEDIATE")
         do {
+            try verifySchema()
             try body()
             try checkIdentity()
+            try crashCheckpoint("transaction")
             try execute("COMMIT")
             try checkIdentity()
         } catch {
@@ -277,6 +302,56 @@ private final class Storage: @unchecked Sendable {
             throw error
         }
     }
+
+    func verifySchema() throws {
+        guard !initializing else { return }
+        guard try integer("PRAGMA user_version") == schema.rawValue,
+              try integer("PRAGMA application_id") == 1380403780,
+              try rows("SELECT sql FROM sqlite_schema WHERE sql IS NOT NULL ORDER BY name") == expectedSchema else {
+            poisoned = true; throw JournalError.unsupportedSchema
+        }
+    }
+    func migrateToAuditV2() throws {
+        guard schema == .legacyV1 else { throw JournalError.unsupportedSchema }
+        try checkIdentity()
+        try execute("BEGIN EXCLUSIVE")
+        do {
+            try verifySchema()
+            try requireAuditResourceBounds(includeAudits: false)
+            try execute(Self.auditSchema)
+            try execute(Self.legacySchema)
+            try execute("INSERT INTO legacy_plans(plan_id) SELECT plan_id FROM plans")
+            try execute("PRAGMA user_version=2")
+            try checkIdentity()
+            try crashCheckpoint("migration")
+            try execute("COMMIT")
+            try checkIdentity()
+            poisoned = true // This legacy instance must never operate on the migrated schema.
+        } catch { try? execute("ROLLBACK"); throw error }
+    }
+
+    func requireAuditResourceBounds(includeAudits: Bool = true) throws {
+        var info = stat()
+        guard fstat(fileFD, &info) == 0 else { throw JournalError.storageFailure }
+        guard info.st_size <= Self.maximumAuditDatabaseBytes,
+              try integer("SELECT count(*) FROM plans") <= 512,
+              try integer("SELECT count(*) FROM steps") <= 8192,
+              try integer("SELECT count(*) FROM plans WHERE length(CAST(plan_id AS BLOB))>1024 OR length(CAST(digest AS BLOB))>1024 OR length(CAST(nonce AS BLOB))>1024") == 0,
+              try integer("SELECT count(*) FROM steps WHERE length(CAST(operation_id AS BLOB))>1024") == 0 else { throw JournalError.resourceLimit }
+        if includeAudits {
+            guard try integer("SELECT coalesce(sum(length(CAST(plan_payload AS BLOB))+length(CAST(envelope AS BLOB))),0) FROM audits") <= 8 * 1024 * 1024 else { throw JournalError.resourceLimit }
+        }
+    }
+
+    private func crashCheckpoint(_ name: String) throws {
+        #if DEBUG
+        if let checkpoint = JournalCrashCheckpoint.beforeCommit {
+            guard sqlite3_db_cacheflush(db) == SQLITE_OK else { throw JournalError.storageFailure }
+            checkpoint(name)
+        }
+        #endif
+    }
+    func poison() { poisoned = true }
 
     func execute(_ sql: String, _ arguments: [String] = []) throws { _ = try rows(sql, arguments) }
     func integer(_ sql: String, _ arguments: [String] = []) throws -> Int {
