@@ -8,7 +8,7 @@
 
 每次生成独立 UUID/0700 子目录；内容和 manifest 通过 `O_EXCL` 以0600写入，完成 `fsync` 文件和目录后读回校验，再次核验源文件。manifest 绑定计划 UUID、源基名、身份/内容/属性和时间，服务状态固定 `notInspected`。任何失败都不会返回成功 receipt；可能留下私有不完整目录用于诊断，不自动删除或尝试系统补偿。
 
-`verify(receipt)` 必须拿受信调用方保存的 receipt 校验；目录内 manifest 本身不能成为授权依据。同 UID 已获完全控制的进程、断电时存储设备写缓存、恶意并发的穷尽竞争、跨卷恢复、原路径逐级解析、owner/group/xattr 重新应用、服务状态和权限恢复均未得到此模块保证。`fsync` 不是对突然掉电的完备承诺。源码没有删除、隔离、恢复、shell 执行或服务操作 API。
+`verify(receipt)` 必须拿受信调用方保存的 receipt 校验；目录内 manifest 本身不能成为授权依据。同 UID 已获完全控制的进程、断电时存储设备写缓存、恶意并发的穷尽竞争、跨卷恢复、原路径逐级解析、owner/group/xattr 重新应用、服务状态和权限恢复均未得到此模块保证。`fsync` 不是对突然掉电的完备承诺。`ResidueBackup`模块没有删除、隔离、恢复、shell执行或服务操作API；同包另有隔离模块，边界见[隔离文档](QUARANTINE.md)。
 
 测试只创建随机临时根，文件写入、ACL修改和清理都只针对本次创建的夹具，不访问真实 LaunchAgents。运行：
 
@@ -21,3 +21,11 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --package-pa
 `swift build --package-path Packages/ResidueBackup --product ResidueBackupVMProbe` 生成 `.build/debug/ResidueBackupVMProbe`。不接受参数、路径或环境授权绕过；真实 `sysctl(hw.model)` 非 VirtualMac 或 root 直接 exit77，参数 exit64，验证失败 exit65。先从 `getpwuid` 获取当前用户家目录，逐级 `openat(O_NOFOLLOW)` 验证根到家目录、Library 和 LaunchAgents，祖先 ACL 只接受 deny 条目，不通过修改源目录权限来使验证成功。
 
 唯一源是已由 ISO01 harness 安装的 `example.residueguard.fixture.iso01.plist`，要求固定完整键集合、Label、当前用户固定 fixture 路径、两个false布尔字段；固定 fixture 本身要求当前uid单链接0700普通文件及严格代码签名校验、对应identifier。ad-hoc identifier 不构成抵御同UID恶意伪装的身份保证，此入口只用于现有自有实验。备份目的地由执行端在 Library 下新建 `ResidueGuard-VM-VerifiedBackup-UUID` 私有根，内部仍为UUID备份目录。成功仅输出脱敏结果和随机backupID，未输出用户路径、内容或xattr。不会修改源、执行fixture、调用launchctl或调整生产能力。VM真实执行结果由单独验收补记。
+
+## 同包受限实验上下文
+
+`ResidueQuarantine` product/target及其测试已迁入本package，原独立package不再保留。`OwnedFixtureLabContext`和描述符/备份实例只用Swift `package`访问级别共享，不是public API；公开入口只接受零参数固定ISO01实验。通用Backup/Quarantine构造器仍不公开，没有任意路径或fd工厂。
+
+`swift test --package-path Packages/ResidueBackup`运行两个测试target；`script/test.sh backup`只筛选17项备份测试，`script/test.sh quarantine`筛选38项隔离/只读恢复/流程测试。
+
+新`ResidueOwnedFixtureVMProbe`构建后由独立VM验收任务运行。它复用同一硬件/用户/固定源/签名验证，另用已验证profile的只读collector要求registeredNotRunning，在备份前、隔离前后、恢复前后观察。它不会bootstrap/bootout/kickstart，也不把未找到服务当作不运行。错误时只输出phase/fileState/backupID并停止，无自动补偿。详见[隔离文档](QUARANTINE.md)。

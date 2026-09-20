@@ -17,13 +17,13 @@ case "${1:-core}" in
   /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResidueAuditImport"
   ;;
  quarantine)
-  /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResidueQuarantine"
+  /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResidueBackup" --filter ResidueQuarantineTests
   ;;
  recovery)
   /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResidueRecovery"
   ;;
  backup)
-  /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResidueBackup"
+  /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResidueBackup" --filter ResidueBackupTests
   ;;
  transactions)
   /usr/bin/xcrun swift test --package-path "$ROOT_DIR/Packages/ResidueTransactions"

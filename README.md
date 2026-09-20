@@ -8,11 +8,12 @@
 - `bash script/preflight.sh`：只读环境预检。
 - `./script/test.sh core`：使用项目选定 Xcode 的 Swift 工具链测试独立核心，无系统副作用。
 - `./script/build_and_run.sh`：使用项目固定 Xcode 构建并以 `.app` 启动；`--build-only` 只构建，`--verify` 检查启动进程。
+- `./script/build_and_run.sh --release-build-only`：构建并核验本地 Release；保留只读沙盒，不带调试授权，无需 Developer ID。
 - `./script/test.sh platform`：独立只读采集与进程边界测试。
-- `./script/test.sh quarantine`：自有临时夹具隔离、恢复冲突与只读恢复核验。
+- `./script/test.sh quarantine`：同一 ResidueBackup package 内的隔离 target，测试自有临时夹具隔离、恢复冲突、只读恢复及固定实验流程。
 - `./script/test.sh recovery`：只读历史审计模型、完整性与脱敏测试。
 - `./script/test.sh audit-import`：真实文件有界读取、链接拒绝与取消测试。
-- `./script/test.sh backup`：源备份、manifest 与篡改拒绝测试。
+- `./script/test.sh backup`：只运行备份 target 的源备份、manifest 与篡改拒绝测试。
 - `./script/test.sh transactions`：真实 SQLite 与无副作用事务驱动的集成测试。
 - `./script/test.sh persistence`：系统 SQLite 持久化日志测试，仅操作测试自有临时目录。
 - `./script/test.sh security`：无副作用的 helper 协议与身份/token 策略测试。
@@ -68,3 +69,5 @@
 完整使用步骤见 [只读版本使用说明](docs/user-guide.md)。本轮综合证据见 [开发验证报告](docs/validation/final-development-results-2026-09-20.md)。
 
 当前以[本地开发验收范围](docs/validation/local-development-scope.md)为准：暂不推进 App Store、Developer ID 或公证发布；这些不是只读功能和隔离测试的开发前置条件。
+
+固定自有VM备份/隔离/恢复实验入口的架构与运行限制见 [受限实验上下文](docs/validation/owned-fixture-context-2026-09-20.md)。它不接受路径参数、不修改服务登记、不接主App生产gate；构建和单测不代表客体实验已通过。

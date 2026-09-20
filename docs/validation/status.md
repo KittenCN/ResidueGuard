@@ -6,9 +6,11 @@
 - VM 中修复目录已授权但读取上级目录失败导致零行的问题：同一自有目录实际返回 1 条；目标未授权仍为无法核实，不误标红。
 - Core 31 项、Transactions 6 项通过：修复未验证注册状态仍可完成事务的错误，两层共用结果判断。见[修复证据](transaction-outcome-fix-2026-09-20.md)。
 - Platform 39 项、Persistence 16 项、Backup 17 项通过。日志含 5 个独立进程 SIGKILL 场景；VM 固定自有夹具的只读备份及精确 runtime 探针通过。
-- Quarantine 30 项、Recovery 10 项通过：临时夹具备份核验、同卷不覆盖隔离/恢复和只读恢复检查；审计模型保持内容完整性与来源真实性分离。没有生产构造入口。
+- Quarantine 38 项、Recovery 10 项通过：临时夹具备份核验、同卷不覆盖隔离/恢复和只读恢复检查；审计模型保持内容完整性与来源真实性分离。没有生产构造入口。
 - AuditImport 15 项真实文件测试通过，App 已接入；其后 History UI 4 通过、1 系统 picker 跳过、0 失败。
 - GUI 全量结果：16 项中 15 通过、1 显式跳过、0 失败（143.409 秒）。跳过系统 picker 自动输入，不能当作导入端到端通过。新文件读取模块集成的验证见[导入报告](history-report-import-2026-09-20.md)。
+- 固定自有 VM 隔离/恢复 probe 已实现，Backup 17 + Quarantine 38 项临时文件测试通过；宿主拒绝（exit77）、参数拒绝（exit64）。客体端到端仍 notRun，见[受限实验上下文](owned-fixture-context-2026-09-20.md)。
+- 本地 Release 已构建并验证双架构签名、只读沙盒与无调试授权；见[签名验证](local-release-signing-2026-09-20.md)。
 - VM 真实 XPC 五场景通过：正确 peer 可通信、错误 client/server 拒绝、同一二进制更正约束后成功，并验证自有进程退出。仍是无特权实验，外部 harness 配置不是生产信任根；未安装 helper。
 
 最新专项证据：[VM GUI](vm-gui-scan-2026-09-20.md)、[系统实验](vm-system-results-2026-09-20.md)、[日志崩溃](journal-crash-results-2026-09-20.md)、[备份](backup-results-2026-09-20.md)、[隔离](quarantine-results-2026-09-20.md)、[恢复核验](recovery-inspection-results-2026-09-20.md)、[IPC](ipc-transport-experiment-2026-09-20.md)。

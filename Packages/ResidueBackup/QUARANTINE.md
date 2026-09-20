@@ -1,6 +1,6 @@
 # ResidueQuarantine：单文件同卷隔离/恢复原型
 
-Swift 6 / macOS 14+，依赖 `ResidueBackup`。没有公开构造器、生产路径工厂、GUI接线或VM入口。只有包测试可以注入已经打开的自有临时源/隔离目录fd和可信Backup对象；没有任意路径、shell或服务接口。production gate 保持关闭。
+Swift 6 / macOS 14+，现在与 `ResidueBackup` 位于同一package，保留独立product/target。没有公开构造器、生产路径工厂或GUI接线；仅有下述固定自有VM实验入口。只有包测试可以注入已经打开的自有临时源/隔离目录fd和可信Backup对象；没有任意路径、shell或服务接口。production gate 保持关闭。
 
 `isolate(receipt:planID:)` 先核验计划UUID、受信receipt和备份manifest/内容，检查源当前身份指纹、大小/hash/全部有界xattr；源目录只允许当前uid所有且无组/其他写，隔离目录必须0700，目录/文件有ACL、危险flags、非普通文件或hardlink均拒绝。源与目标目录 device 不同直接拒绝。只执行目录fd锚定的 `renameatx_np(..., RENAME_EXCL)`；不回退到覆盖rename或copy-delete。隔离文件名由备份UUID固定生成，不由外部路径提供。
 
@@ -19,7 +19,7 @@ Swift 6 / macOS 14+，依赖 `ResidueBackup`。没有公开构造器、生产路
 验证命令：
 
 ```sh
-DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --package-path Packages/ResidueQuarantine
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --package-path Packages/ResidueBackup --filter ResidueQuarantineTests
 ```
 
 全部写入/ACL试验发生在测试新建的随机临时目录。20项真实文件API测试通过。真实跨卷测试、客体VM实验、进程崩溃/断电测试未执行。API依据为当前系统 `renameatx_np(2)` 手册：`RENAME_EXCL` 返回EEXIST保护已有目标；平台/卷不支持时直接失败。
@@ -30,4 +30,12 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test --package-pa
 
 结果的`permitsMutation`、`runtimeInspected`永远false；对象匹配允许rename导致的ctime变化，但仍核验其他身份、mtime、内容和xattr。这是顺序读取的时间点观察，不是跨对象原子快照，也不验证计划有效期/新版本安装/服务运行状态。需要持久受信receipt重建、运行状态及新恢复计划才能接启动恢复界面，不能加载磁盘manifest便直接授权。
 
-2026-09-20新增10项只读恢复测试，合计30项通过。未新增VM可执行入口：现有Backup VM probe只返回脱敏摘要，无法跨包安全传递受信Backup对象和receipt。下一步应设计独立受限lab context或测试目标桥接，不临时开放任意路径/fd生产构造器。实际文件移动的VM端到端实验仍未由本包证明。
+2026-09-20先新增10项只读恢复测试，再新增8项受限实验流程测试，合计38项通过。实际文件移动的VM端到端实验仍未由本包证明。
+
+## 固定自有VM往返实验
+
+构建 `swift build --package-path Packages/ResidueBackup --product ResidueOwnedFixtureVMProbe`。可执行文件无参数；真实硬件型号不是VirtualMac或用户为root则exit77，有参数exit64，失败exit65。只有当前passwd家目录下固定ISO01 plist、固定且严格签名验证的fixture及私有备份根可进入。`OwnedFixtureLabContext`是package级类型，rawfd和Backup实例不能跨包访问，也没有caller提供路径的公共闭包。
+
+执行顺序为明确不运行观察→备份→明确不运行观察→隔离→明确不运行观察→只读恢复检查→明确不运行观察→计划内恢复→明确不运行观察→最终文件检查。这里的明确不运行严格指指定build/parser下的registeredNotRunning，既不代表未注册也不授权一般用户清理。任意running/unknown/取消/输出不完整/未知profile都停止，绝不因为错误而自动恢复。隔离后失败可能留下原源缺失、文件在隔离区；错误结果保留phase、实际已知fileState和backupID，新处理须先只读核验并另定计划。
+
+正常路径的restore是自有实验预定步骤，不是失败后的补偿。没有完整持久journal、产品确认或真实交易token驱动；不声称满足完整P3 gate。多次runtime观察不能保证观测间隔中从未运行，源命名空间竞争的限制仍适用。实验不会修改任何launchd登记；成功输出也只写observedRegisteredNotRunning，不声称登记历史完全不变。当前只构建/临时夹具测试/宿主拒绝通过，客体执行notRun，留给后续独立VM验收。
