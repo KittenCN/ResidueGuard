@@ -48,3 +48,5 @@ P4新增有界HelperRequest wire codec：16KiB/深度/字符串限制，严格�
 有界status-only XPC实验已修正GUI与服务审计会话的角色混淆；10项模型测试通过，真实VM17场景全部通过并逐个核验自有进程退出。保留v1/v2失败；外部manifest不是生产信任根，未安装helper或接执行器。见[会话与wire实验](status-wire-xpc-experiment-2026-09-20.md)。
 
 只读索引/候选图新增移动、同ID/同名不同签名提示和暂缺后恢复的边界补测：Core60、Platform50项通过，四阶段行存在性显式验证。只证明不变红/不产生执行能力，不是有效签名替代安装或真实updater全矩阵验收，见[误判边界](index-candidate-misclassification-matrix-2026-09-20.md)。
+
+最小窗口定向GUI回归1项通过、0失败/跳过（23.071秒）：实际980×692点，双确认按钮可达，第二确认可用时Escape取消，重开须重新批准范围。未改变生产UI，未重跑全量GUI；不等于完整VoiceOver/高对比度验收。见[小窗口与键盘](minimum-window-keyboard-2026-09-20.md)。
