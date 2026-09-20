@@ -9,16 +9,17 @@ package final class OwnedFixtureLabContext {
     package let backup: VerifiedBackup
     package let sourceName: String
     package let fingerprint: SourceFingerprint
+    package let programFingerprint: SourceFingerprint
     package let home: String
     private init(sourceFD: Int32, labFD: Int32, backup: VerifiedBackup, name: String,
-                 fingerprint: SourceFingerprint, home: String) throws {
+                 fingerprint: SourceFingerprint, programFingerprint: SourceFingerprint, home: String) throws {
         let sourceCopy = dup(sourceFD), labCopy = dup(labFD)
         guard sourceCopy >= 0, labCopy >= 0 else {
             if sourceCopy >= 0 { close(sourceCopy) }; if labCopy >= 0 { close(labCopy) }
             throw VMLabProbeError.invalidLab
         }
         self.sourceFD = sourceCopy; self.labFD = labCopy; self.backup = backup
-        sourceName = name; self.fingerprint = fingerprint; self.home = home
+        sourceName = name; self.fingerprint = fingerprint; self.programFingerprint = programFingerprint; self.home = home
     }
     deinit { close(sourceFD); close(labFD) }
     package static func createISO01() throws -> OwnedFixtureLabContext {
@@ -55,28 +56,55 @@ package final class OwnedFixtureLabContext {
               let keep = plist["KeepAlive"] as? NSNumber, CFGetTypeID(keep) == CFBooleanGetTypeID(), !keep.boolValue else {
             throw VMLabProbeError.invalidLab
         }
-        let fixtureRoot = try labOpenDirectory(parent: libraryFD, name: "ResidueGuard-VM-ISO01", privateRequired: true)
-        defer { close(fixtureRoot) }
-        let fixtureFD = openat(fixtureRoot, "fixture", O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
-        guard fixtureFD >= 0 else { throw VMLabProbeError.invalidLab }; defer { close(fixtureFD) }
-        var before = stat()
-        guard fstat(fixtureFD, &before) == 0, before.st_mode & S_IFMT == S_IFREG,
-              before.st_uid == getuid(), before.st_mode & 0o7777 == 0o700,
-              before.st_nlink == 1, before.st_flags == 0 else { throw VMLabProbeError.invalidLab }
+        let programFingerprint = try verifyFixedProgram(store: store, home: home)
+        try store.bindOwnedFixtureAuditRoot(parentFD: libraryFD, labID: labID, home: home)
+        return try OwnedFixtureLabContext(sourceFD: sourceFD, labFD: destinationFD, backup: store,
+                                          name: name, fingerprint: fingerprint, programFingerprint: programFingerprint, home: home)
+    }
+    package func verifyProgram() throws {
+        _ = try Self.verifyFixedProgram(store: backup, home: home, expected: programFingerprint)
+    }
+    private static func verifyFixedProgram(store: VerifiedBackup, home: String,
+                                           expected: SourceFingerprint? = nil) throws -> SourceFingerprint {
+        let libraryFD = try labOpenChain(home + "/Library")
+        defer { close(libraryFD) }
+        let root = try labOpenDirectory(parent: libraryFD, name: "ResidueGuard-VM-ISO01", privateRequired: true)
+        defer { close(root) }
+        var original = stat()
+        guard fstat(root, &original) == 0 else { throw VMLabProbeError.invalidLab }
+        let result = try inspectSignedProgram(store: store, directory: root,
+            fixedPath: home + "/Library/ResidueGuard-VM-ISO01/fixture", expected: expected)
+        let currentLibrary = try labOpenChain(home + "/Library")
+        defer { close(currentLibrary) }
+        let currentRoot = try labOpenDirectory(parent: currentLibrary, name: "ResidueGuard-VM-ISO01", privateRequired: true)
+        defer { close(currentRoot) }
+        var current = stat()
+        guard fstat(currentRoot, &current) == 0, original.st_dev == current.st_dev,
+              original.st_ino == current.st_ino else { throw BackupFailure.changed }
+        return result
+    }
+    // Module-internal signed temporary-fixture seam; fixed production wrapper supplies the path.
+    static func inspectSignedProgram(store: VerifiedBackup, directory: Int32, fixedPath: String,
+                                     expected: SourceFingerprint? = nil) throws -> SourceFingerprint {
+        let fd = openat(directory, "fixture", O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
+        guard fd >= 0 else { throw VMLabProbeError.invalidLab }; defer { close(fd) }
+        let fingerprint = try inspectProgram(store: store, fd: fd, directory: directory, expected: expected)
         var code: SecStaticCode?
         var requirement: SecRequirement?
-        guard SecStaticCodeCreateWithPath(URL(fileURLWithPath: home + "/Library/ResidueGuard-VM-ISO01/fixture") as CFURL, [], &code) == errSecSuccess,
+        guard SecStaticCodeCreateWithPath(URL(fileURLWithPath: fixedPath) as CFURL, [], &code) == errSecSuccess,
               SecRequirementCreateWithString("identifier \"example.residueguard.fixture.iso01\"" as CFString, [], &requirement) == errSecSuccess,
               let code, let requirement,
               SecStaticCodeCheckValidity(code, SecCSFlags(rawValue: kSecCSStrictValidate), requirement) == errSecSuccess else { throw VMLabProbeError.invalidLab }
-        var after = stat()
-        guard fstatat(fixtureRoot, "fixture", &after, AT_SYMLINK_NOFOLLOW) == 0,
-              after.st_dev == before.st_dev, after.st_ino == before.st_ino,
-              after.st_size == before.st_size, after.st_ctimespec.tv_sec == before.st_ctimespec.tv_sec,
-              after.st_ctimespec.tv_nsec == before.st_ctimespec.tv_nsec else { throw VMLabProbeError.invalidLab }
-        try store.bindOwnedFixtureAuditRoot(parentFD: libraryFD, labID: labID, home: home)
-        return try OwnedFixtureLabContext(sourceFD: sourceFD, labFD: destinationFD, backup: store,
-                                          name: name, fingerprint: fingerprint, home: home)
+        _ = try inspectProgram(store: store, fd: fd, directory: directory, expected: fingerprint)
+        return fingerprint
+    }
+    // Internal fixture seam: production caller supplies only the already-open fixed ISO01 file.
+    static func inspectProgram(store: VerifiedBackup, fd: Int32, directory: Int32,
+                               expected: SourceFingerprint? = nil) throws -> SourceFingerprint {
+        let fingerprint = try store.readOpened(fd: fd, directory: directory, name: "fixture", requirePrivate: false).1
+        guard fingerprint.mode & 0o7777 == 0o700 else { throw BackupFailure.unsafeFile }
+        if let expected, fingerprint != expected { throw BackupFailure.changed }
+        return fingerprint
     }
     package func makeQuarantineDirectory() throws -> Int32 {
         guard mkdirat(labFD, "quarantine", 0o700) == 0 else { throw VMLabProbeError.invalidLab }

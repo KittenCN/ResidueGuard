@@ -179,12 +179,17 @@ public final class VerifiedBackup {
     private func read(_ name: String, directory: Int32, requirePrivate: Bool) throws -> (Data, SourceFingerprint) {
         let fd = openat(directory, name, O_RDONLY | O_NOFOLLOW | O_NONBLOCK | O_CLOEXEC)
         guard fd >= 0 else { throw BackupFailure.unsafeFile }; defer { close(fd) }
+        return try readOpened(fd: fd, directory: directory, name: name, requirePrivate: requirePrivate)
+    }
+    // Module-internal shared bounded reader; no raw-fd interface crosses the module boundary.
+    func readOpened(fd: Int32, directory: Int32, name: String, requirePrivate: Bool) throws -> (Data, SourceFingerprint) {
+        guard !name.isEmpty, name != ".", name != "..", !name.contains("/"), !name.contains("\0") else { throw BackupFailure.invalidName }
         let before = try attributes(fd, privateMode: requirePrivate)
         let beforeXattrs = try xattrs(fd)
         guard before.st_size >= 0, before.st_size <= maximumSize else { throw BackupFailure.unsafeFile }
         var data = Data(); var buffer = [UInt8](repeating: 0, count: 8192)
         while true {
-            let count = Darwin.read(fd, &buffer, buffer.count)
+            let count = Darwin.pread(fd, &buffer, buffer.count, off_t(data.count))
             if count < 0 { if errno == EINTR { continue }; throw BackupFailure.io }
             if count == 0 { break }
             guard data.count + count <= maximumSize else { throw BackupFailure.unsafeFile }
