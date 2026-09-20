@@ -43,3 +43,5 @@ VM 实际 UI 正常路径：本地 Release 通过 NSOpenPanel 选择仅有自有
 首轮新增 UI 测试失败：侧栏恢复在底部导致 exists 但不可点击，以及 SwiftUI checkbox 的 value 非 String；已修测试为有界侧栏滚动、核验真实选择计数与预览门禁。后续运行结果待下文记录；首轮失败不计通过。
 
 后续定向 GUI 运行：`xcodebuild ... -only-testing:ResidueGuardUITests/RetentionRuleUITests test`，2 项通过、0 失败（100.575 秒），分别覆盖完整保留/移除选择门禁和演示规则进程重启清空。最终 Preferences 重跑 22 项通过（2.011 秒）；取消转发和新沙盒初始化改动后的 Release 再构建及双架构签名检查通过。VM 中还实际点击移除本轮创建的本地规则，界面显示“尚无本地规则”，未修改夹具来源。
+
+最终全量 `./script/test.sh ui`：18 项中 17 通过、1 系统 picker 显式跳过、0 失败（224.780 秒），包含新沙盒初始化改动。系统 picker 的 VM 手动界面控制证据独立记录，未把 XCTest 跳过改为通过。
