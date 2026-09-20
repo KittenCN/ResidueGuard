@@ -100,3 +100,5 @@ Gatekeeper、hardened runtime、library validation、SMAppService 注册/用户�
 ## 客体工具只读预检
 
 2026-09-20 已在现有 VirtualMac 客体执行零参数只读预检：macOS 27.0/26A428，系统 LibreSSL 3.3.6，`security`、`codesign`、`csreq`、`openssl` 均存在。客体 `security help` 再次确认 create-keychain -P、unlock-keychain -u、import -k/-x/-T 和默认安全输入能力。证据保存在忽略的 `.local-evidence/vm-transfer/signing-preflight-v1.txt`。没有创建证书/密钥/keychain、读取现有身份、修改信任或search list；工具存在不等于签名方案已经通过。
+
+后续已在客体私有实验目录保存原keychain search list，并调用 `security create-keychain -P` 打开专用 development keychain 的新密码窗口。该调用正在等待用户本人填写并提交；未收到完成确认，不能声称keychain或签名身份已创建。新凭据必须由用户在客体安全界面设置，不写入聊天/argv/共享目录。此时尚未生成证书/私钥、修改信任或安装helper；其他代码与非界面测试已继续。

@@ -5,7 +5,7 @@
 - 原生 SwiftUI App 支持显式目录只读扫描、合成演示、dry-run、脱敏报告、权限引导；新增历史审计报告只读导入页。
 - VM 中修复目录已授权但读取上级目录失败导致零行的问题：同一自有目录实际返回 1 条；目标未授权仍为无法核实，不误标红。
 - Core 60 项、Transactions 6 项通过：修复未验证注册状态仍可完成事务的错误，两层共用结果判断。见[修复证据](transaction-outcome-fix-2026-09-20.md)。
-- Platform 56 项、Persistence 41 项、Backup 54 项通过。日志含 18 个独立进程 SIGKILL 场景（含schema2审计写入与迁移）；VM 固定自有夹具的只读备份及精确 runtime 探针通过。
+- Platform 56 项、Persistence 41 项、Backup原54项与新增fresh核验11项通过。日志含 18 个独立进程 SIGKILL 场景（含schema2审计写入与迁移）；VM 固定自有夹具的只读备份及精确 runtime 探针通过。
 - Quarantine 79 项、Recovery 20 项通过：临时夹具备份核验、同卷不覆盖隔离/恢复和只读恢复检查；审计模型保持内容完整性与来源真实性分离。没有生产构造入口。
 - AuditImport 15 项真实文件测试通过，App 已接入；其后 History UI 4 通过、1 系统 picker 跳过、0 失败。
 - GUI 最新全量结果：22 项中 21 通过、1 显式跳过、0 失败（273.497 秒）。跳过系统 picker 自动输入；随后另行在VM Release实际选择文件并导入显示成功，不能据此改写XCTest结果。新文件读取模块集成的验证见[导入报告](history-report-import-2026-09-20.md)。
@@ -56,3 +56,5 @@ P4新增有界HelperRequest wire codec：16KiB/深度/字符串限制，严格�
 近期直接目标消失保护已接入工作区长期历史：同来源/指纹/目标曾存在后变缺失保持unknown，首次缺失语义不变；后台有界比较，取消/旧请求不提交。Platform56项通过及实际Release双架构构建/签名检查通过，见[直接目标保护](recent-direct-target-disappearance-2026-09-20.md)。
 
 已有Rosetta下实际x86_64执行：Core60项、Platform56项均通过，测试bundle均为单x86_64。先前SwiftPM runner因arm64-only失败，改用已安装公开xctest运行并保留失败记录；这是Apple Silicon转译验证，不是Intel硬件/GUI验收。见[跨架构记录](rosetta-core-tests-2026-09-20.md)。
+
+固定自有临时夹具新增只读fresh恢复一致性检查：新prepare规范manifest直接衔接，拒绝源冲突/链接/篡改/根替换；旧verify兼容性保持，新reader拒绝非规范旧格式。完整Backup包144项通过（原Backup54、Quarantine79、fresh11）。历史仍不可信，无执行授权，未接VM，见[fresh核验](fresh-recovery-assessment-2026-09-20.md)。

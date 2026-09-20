@@ -71,7 +71,7 @@
 
 最新只读范围与限制见 [P2 验证记录](docs/validation/p2-results-2026-09-20.md)，整体剩余门槛见 [项目进度](docs/validation/project-progress.md)。
 
-完整使用步骤见 [只读版本使用说明](docs/user-guide.md)。本轮综合证据见 [开发验证报告](docs/validation/final-development-results-2026-09-20.md)。
+完整使用步骤见 [只读版本使用说明](docs/user-guide.md)。早期阶段证据见 [开发验证报告](docs/validation/final-development-results-2026-09-20.md)。
 
 当前以[本地开发验收范围](docs/validation/local-development-scope.md)为准：暂不推进 App Store、Developer ID 或公证发布；这些不是只读功能和隔离测试的开发前置条件。
 

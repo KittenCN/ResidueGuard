@@ -75,7 +75,9 @@ public final class VerifiedBackup {
         guard fd >= 0 else { throw BackupFailure.io }; defer { close(fd) }
         try Self.directory(fd)
         try write(bytes, name: "source.plist", directory: fd)
-        try write(JSONEncoder().encode(receipt), name: "manifest.json", directory: fd)
+        // Canonical bytes for newly created manifests; legacy verify continues semantic decoding.
+        let manifestEncoder = JSONEncoder(); manifestEncoder.outputFormatting = [.sortedKeys]
+        try write(manifestEncoder.encode(receipt), name: "manifest.json", directory: fd)
         guard fsync(fd) == 0, fsync(destination) == 0 else { throw BackupFailure.io }
         try verify(receipt)
         guard try readSource(name).1 == expected else { throw BackupFailure.changed }
@@ -309,5 +311,12 @@ extension VerifiedBackup {
         try context.backup.verify(receipt)
         guard try context.backup.inspect(name: context.sourceName) == context.fingerprint else { throw BackupFailure.changed }
         return "PASS ISO01 verified backup; sourceUnchanged=true; runtime=notInspected; productionGate=disabled; backupID=\(receipt.id.uuidString)"
+    }
+}
+
+extension VerifiedBackup {
+    // Module-internal policy reuse for the read-only temporary recovery assessment.
+    static func checkRecoveryDirectory(_ fd: Int32, privateRequired: Bool = true) throws {
+        try directory(fd, privateRequired: privateRequired)
     }
 }
